@@ -1,0 +1,30 @@
+@baseurl = http://localhost:8000/api/v1
+
+GET {{baseurl}}/customers/
+
+###
+GET {{baseurl}}/users/
+
+###
+POST {{baseurl}}/users/
+Content-Type: application/json
+
+{
+    "username": "fromhttp",
+    "email": "234@gmail.com",
+    "password": "q1we2T"
+}
+
+###
+POST {{baseurl}}/customers/
+Content-Type: application/json
+
+{
+    "phone": "+7123123123",
+    "user": {
+        "username": "testuser",
+        "password": "Aq1",
+        "email": "as1d@mail.ru"
+    }
+}
+
