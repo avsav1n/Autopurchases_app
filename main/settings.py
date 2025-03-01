@@ -106,9 +106,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ru-RU"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 
@@ -128,6 +128,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "autopurchases.auth.CustomTokenAuthentication",
-    ]
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework_yaml.parsers.YAMLParser",
+        "rest_framework.parsers.JSONParser",
+    ],
 }
+
+AUTH_USER_MODEL = "autopurchases.User"

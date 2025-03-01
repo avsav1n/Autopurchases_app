@@ -7,7 +7,7 @@ class CustomTokenAuthentication(TokenAuthentication):
     def authenticate_credentials(self, key):
         model = self.get_model()
         try:
-            token = model.objects.select_related("user__shop", "user__customer").get(key=key)
+            token = model.objects.select_related("user").get(key=key)
         except model.DoesNotExist:
             raise exceptions.AuthenticationFailed(_("Invalid token."))
 
