@@ -7,4 +7,4 @@ class AutopurchasesConfig(AppConfig):
     verbose_name = "Автозакупки"
 
     def ready(self):
-        from autopurchases.signals import create_auth_token
+        from autopurchases.signals import new_user_registered

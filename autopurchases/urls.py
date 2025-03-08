@@ -18,14 +18,24 @@ Including another URLconf
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from autopurchases.views import EmailObtainAuthToken, ShopView, UserViewSet
+from autopurchases.views import (
+    CartViewSet,
+    EmailObtainAuthToken,
+    OrdersView,
+    ShopViewSet,
+    StockView,
+    UserViewSet,
+)
 
 router = DefaultRouter()
 router.register("user", UserViewSet, basename="user")
-router.register("shop", ShopView, basename="shops")
+router.register("shop", ShopViewSet, basename="shop")
+router.register("cart", CartViewSet, basename="cart")
 
 app_name = "autopurchases"
 urlpatterns = [
     path("", include(router.urls)),
+    path("order/", OrdersView.as_view(), name="order"),
+    path("stock/", StockView.as_view(), name="stock"),
     path("login/", EmailObtainAuthToken.as_view(), name="login"),
 ]

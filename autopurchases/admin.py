@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.forms import UserChangeForm
 from django.http import HttpRequest
 
-from autopurchases.models import Category, Parameter, Product, Shop, User
+from autopurchases.models import Category, Parameter, Product, Shop, Stock, User
 
 
 class ProductsParametersInline(admin.TabularInline):
@@ -17,25 +17,25 @@ class ShopManagersInline(admin.TabularInline):
     extra = 0
 
 
-@admin.register(Shop)
-class ShopAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "description_column", "created_at", "updated_at"]
-    fieldsets = [
-        ("Информация о магазине", {"fields": ("name", "description")}),
-    ]
-    inlines = [ShopManagersInline]
-    exclude = ["managers"]
-    list_display_links = ["name"]
+# @admin.register(Shop)
+# class ShopAdmin(admin.ModelAdmin):
+#     list_display = ["id", "name", "description_column", "created_at", "updated_at"]
+#     fieldsets = [
+#         ("Информация о магазине", {"fields": ("name", "description")}),
+#     ]
+#     inlines = [ShopManagersInline]
+#     exclude = ["managers"]
+#     list_display_links = ["name"]
 
-    @admin.display(description="Описание", ordering="description")
-    def description_column(self, obj: Shop):
-        description: str = repr(obj.description)
-        if description != "None":
-            return description
-        return self.get_empty_value_display()
+#     @admin.display(description="Описание", ordering="description")
+#     def description_column(self, obj: Shop):
+#         description: str = repr(obj.description)
+#         if description != "None":
+#             return description
+#         return self.get_empty_value_display()
 
-    def get_queryset(self, request: HttpRequest):
-        return Shop.objects.prefetch_related("managers").all()
+#     def get_queryset(self, request: HttpRequest):
+#         return Shop.objects.prefetch_related("managers").all()
 
 
 # @admin.register(User)
@@ -68,4 +68,9 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Parameter)
 class ParameterAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Stock)
+class StockAdmin(admin.ModelAdmin):
     pass

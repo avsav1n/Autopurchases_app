@@ -1,15 +1,20 @@
+import uuid
+from collections import defaultdict
 from typing import TypeAlias
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from autopurchases.models import (
     Category,
     Contact,
+    Order,
     Parameter,
     Product,
     ProductsParameters,
@@ -37,10 +42,10 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "email", "password", "phone", "contacts"]
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {"password": {"write_only": True}, "username": {"required": False}}
 
     def validate_password(self, value: str):
-        validate_password(value)
+        # validate_password(value)
         return value
 
     def create(self, validated_data: dict):
@@ -102,10 +107,6 @@ class CategorySerializer(serializers.ModelSerializer):
     def to_representation(self, instance: Category):
         return instance.name
 
-    def create(self, validated_data: dict):
-        instance, _ = self.Meta.model.objects.get_or_create(**validated_data)
-        return instance
-
 
 class ParameterListSerializer(serializers.ListSerializer):
     def to_internal_value(self, data: dict[str, str | int]):
@@ -134,7 +135,7 @@ class ParameterSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(validators=[])
+    category = CategorySerializer()
     parameters = ParameterSerializer(source="parameters_values", many=True)
     price = serializers.IntegerField(write_only=True)
     quantity = serializers.IntegerField(write_only=True)
@@ -145,8 +146,6 @@ class ProductSerializer(serializers.ModelSerializer):
         extra_kwargs = {"name": {"validators": []}}
 
     def to_representation(self, instance: Product):
-        # TODO: кеширование создаваемых объектов
-        # TODO: доделать сериализатор, чтобы отдавал данные в том числе без привязки к магазину
         repr: dict[str, str | dict] = super().to_representation(instance=instance)
         if shop := self.context.get("shop"):
             stock = Stock.objects.get(product=instance, shop=shop)
@@ -158,18 +157,19 @@ class ProductSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict):
         shop: Shop = self.context["shop"]
 
-        category, _ = Category.objects.get_or_create(validated_data["category"])
+        category, _ = Category.objects.get_or_create(**validated_data["category"])
 
         product, _ = Product.objects.get_or_create(
             category=category, model=validated_data["model"], name=validated_data["name"]
         )
-        # TODO: если товар уже есть надо просто обновить его параметры или не трогать их
-        # TODO: скорее всего товар уже хранится с какимито параметрами
         for params in validated_data["parameters_values"]:
             parameter, _ = Parameter.objects.get_or_create(name=params["name"])
-            ProductsParameters.objects.get_or_create(
+            if not ProductsParameters.objects.filter(
                 product=product, parameter=parameter, value=params["value"]
-            )
+            ).exists():
+                ProductsParameters.objects.create(
+                    product=product, parameter=parameter, value=params["value"]
+                )
 
         Stock.objects.create(
             shop=shop,
@@ -209,3 +209,87 @@ class EmailAuthTokenSerializer(serializers.Serializer):
 
         attrs["user"] = user
         return attrs
+
+
+class StockSerializer(serializers.ModelSerializer):
+    shop = ShopSerializer()
+    product = ProductSerializer()
+
+    class Meta:
+        model = Stock
+        fields = ["id", "shop", "product", "quantity", "price"]
+
+    def to_representation(self, instance):
+        repr: dict[str, int | dict] = super().to_representation(instance)
+        repr["shop"] = repr["shop"]["name"]
+        product_info = repr.pop("product")
+        product_info.pop("id")
+        repr.update({**product_info})
+        return repr
+
+
+class CartSerialaizer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["id", "customer", "product", "quantity", "total_price"]
+        read_only_fields = ["total_price", "customer"]
+
+    def validate(self, attrs: dict):
+        stock: Stock = attrs["product"] if self.instance is None else self.instance.product
+        check_availability(can_buy=stock.can_buy)
+        check_quantity(on_stock=stock.quantity, in_order=attrs["quantity"])
+        return attrs
+
+    def create(self, validated_data: dict):
+        validated_data["customer"] = self.context["request"].user
+        return super().create(validated_data)
+
+
+class OrderListSerializer(serializers.ListSerializer):
+    def update(self, orders: list[Order], validated_data: list[dict]):
+        validated_data: dict = validated_data[0]
+        confirmed_orders = []
+        for order in orders:
+            stock: Stock = order.product
+
+            check_availability(can_buy=stock.can_buy)
+            check_quantity(on_stock=stock.quantity, in_order=order.quantity)
+
+            with transaction.atomic():
+                stock.quantity -= order.quantity
+                for attr, value in validated_data.items():
+                    setattr(order, attr, value)
+                stock.save()
+                order.save()
+                confirmed_orders.append(order)
+        return confirmed_orders
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "quantity",
+            "total_price",
+            "delivery_address",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["customer", "product", "quantity", "total_price"]
+        list_serializer_class = OrderListSerializer
+
+
+def check_quantity(on_stock: int, in_order: int) -> None:
+    if on_stock < in_order:
+        raise serializers.ValidationError(
+            "The selected shop does not have enough products in stock"
+        )
+
+
+def check_availability(can_buy: bool) -> None:
+    if not can_buy:
+        raise serializers.ValidationError("The selected product is not available for order")
