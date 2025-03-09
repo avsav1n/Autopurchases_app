@@ -11,14 +11,18 @@ class IsMeOrAdmin(BasePermission):
         return request.user.is_staff or request.user == obj
 
 
-class IsManagerOrAdminOrReadOnly(BasePermission):
+class IsManagerOrAdmin(BasePermission):
     message = "Only shop administrators can make changes"
 
     def has_object_permission(self, request: Request, view, obj: Shop):
+        return request.user.is_staff or request.user in obj.managers.all()
+
+
+class IsManagerOrAdminOrReadOnly(IsManagerOrAdmin):
+    def has_object_permission(self, request: Request, view, obj: Shop):
         return (
-            request.user.is_staff
+            super().has_object_permission(request=request, view=view, obj=obj)
             or request.method in SAFE_METHODS
-            or request.user in obj.managers.all()
         )
 
 

@@ -16,7 +16,7 @@ class StockFilter(filters.FilterSet):
         fields = []
 
 
-class OrderFilter(filters.Filter):
+class OrderFilter(filters.FilterSet):
     status = filters.CharFilter(field_name="status", lookup_expr="icontains")
     created = filters.DateFromToRangeFilter(field_name="created_at")
 

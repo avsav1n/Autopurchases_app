@@ -139,10 +139,11 @@ class ProductSerializer(serializers.ModelSerializer):
     parameters = ParameterSerializer(source="parameters_values", many=True)
     price = serializers.IntegerField(write_only=True)
     quantity = serializers.IntegerField(write_only=True)
+    can_buy = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Product
-        fields = ["id", "category", "model", "name", "price", "quantity", "parameters"]
+        fields = ["id", "category", "model", "name", "price", "quantity", "parameters", "can_buy"]
         extra_kwargs = {"name": {"validators": []}}
 
     def to_representation(self, instance: Product):
@@ -151,6 +152,7 @@ class ProductSerializer(serializers.ModelSerializer):
             stock = Stock.objects.get(product=instance, shop=shop)
             repr["price"] = stock.price
             repr["quantity"] = stock.quantity
+            repr["can_buy"] = stock.can_buy
         return repr
 
     @transaction.atomic
@@ -171,12 +173,15 @@ class ProductSerializer(serializers.ModelSerializer):
                     product=product, parameter=parameter, value=params["value"]
                 )
 
-        Stock.objects.create(
-            shop=shop,
-            product=product,
-            price=validated_data["price"],
-            quantity=validated_data["quantity"],
-        )
+        stock_kwargs = {
+            "shop": shop,
+            "product": product,
+            "price": validated_data["price"],
+            "quantity": validated_data["quantity"],
+        }
+        if "can_buy" in validated_data:
+            stock_kwargs["can_buy"] = validated_data["can_buy"]
+        Stock.objects.create(**stock_kwargs)
 
         return product
 
@@ -247,6 +252,7 @@ class CartSerialaizer(serializers.ModelSerializer):
 
 class OrderListSerializer(serializers.ListSerializer):
     def update(self, orders: list[Order], validated_data: list[dict]):
+        # TODO: проверить как поведет себя код, если один из продуктов не пройдет валидацию по количеству или доступности
         validated_data: dict = validated_data[0]
         confirmed_orders = []
         for order in orders:
@@ -266,6 +272,10 @@ class OrderListSerializer(serializers.ListSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    customer = UserSerializer(read_only=True)
+    product = StockSerializer(read_only=True)
+    delivery_address_read = ContactSerializer(source="delivery_address", read_only=True)
+
     class Meta:
         model = Order
         fields = [
@@ -275,12 +285,29 @@ class OrderSerializer(serializers.ModelSerializer):
             "quantity",
             "total_price",
             "delivery_address",
+            "delivery_address_read",
             "status",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["customer", "product", "quantity", "total_price"]
         list_serializer_class = OrderListSerializer
+
+    def to_representation(self, instance):
+        repr: dict = super().to_representation(instance)
+        customer_info: dict = repr.pop("customer")
+        repr["customer"] = customer_info["email"]
+
+        product_info: dict = repr.pop("product")
+        repr["shop"] = product_info["shop"]
+        repr["category"] = product_info["category"]
+        repr["model"] = product_info["model"]
+        repr["name"] = product_info["name"]
+
+        delivery_address_info: dict = repr.pop("delivery_address_read")
+        delivery_address_info.pop("id")
+        repr["delivery_address"] = delivery_address_info
+        return repr
 
 
 def check_quantity(on_stock: int, in_order: int) -> None:

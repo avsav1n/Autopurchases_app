@@ -6,7 +6,8 @@ from pprint import pp
 
 import yaml
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -22,10 +23,22 @@ from rest_framework_yaml.parsers import YAMLParser
 from rest_framework_yaml.renderers import YAMLRenderer
 
 from autopurchases.filters import OrderFilter, StockFilter
-from autopurchases.models import Category, Contact, Order, Product, Shop, Stock, User
+from autopurchases.models import (
+    Category,
+    Contact,
+    Order,
+    Parameter,
+    PasswordResetToken,
+    Product,
+    ProductsParameters,
+    Shop,
+    Stock,
+    User,
+)
 from autopurchases.permissions import (
     IsAdminOrReadOnly,
     IsCartOwnerOrAdmin,
+    IsManagerOrAdmin,
     IsManagerOrAdminOrReadOnly,
     IsMeOrAdmin,
 )
@@ -87,7 +100,7 @@ class UserViewSet(ModelViewSet):
         contact_ser.save()
 
         user_ser = UserSerializer(user)
-        return Response(user_ser.data)
+        return Response(user_ser.data, status=status.HTTP_201_CREATED)
 
     @action(
         methods=["DELETE"],
@@ -106,7 +119,18 @@ class UserViewSet(ModelViewSet):
         contact.delete()
 
         user_ser = UserSerializer(user)
-        return Response(user_ser.data)
+        return Response(user_ser.data, status=status.HTTP_200_OK)
+
+    @action(methods=["GET"], detail=False, url_path="reset", url_name="reset-password")
+    def get_password_reset_token(self, request: Request):
+        email: str = request.data.get("email")
+        if email is None:
+            return Response({"error": "No email"}, status=status.HTTP_400_BAD_REQUEST)
+        user: User = get_object_or_404(User, email=email)
+        PasswordResetToken.objects.update_or_create(user=user)
+        return Response(
+            {"message": f"New password reset token sent to {email}"}, status=status.HTTP_200_OK
+        )
 
 
 class ShopViewSet(ModelViewSet):
@@ -150,6 +174,21 @@ class ShopViewSet(ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         return data
+
+    @action(
+        methods=["GET"],
+        detail=True,
+        url_path="orders",
+        url_name="orders",
+        permission_classes=[IsManagerOrAdmin],
+    )
+    def get_shop_orders(self, request: Request, pk: int) -> Response:
+        shop: Shop = self.get_object()
+        orders: QuerySet[Order] = (
+            Order.objects.filter(product__shop=shop).exclude(status="in_cart").all()
+        )
+        order_ser = OrderSerializer(orders, many=True)
+        return Response(order_ser.data)
 
     @action(methods=["POST"], detail=False, url_path="import", url_name="import")
     @transaction.atomic
@@ -224,7 +263,15 @@ class StockView(ListAPIView):
     """
 
     serializer_class = StockSerializer
-    queryset = Stock.objects.filter(can_buy=True).select_related("product__category", "shop").all()
+    queryset = (
+        Stock.objects.filter(can_buy=True)
+        .select_related("product__category", "shop")
+        .prefetch_related(
+            Prefetch("product__parameters", queryset=Parameter.objects.all()),
+            Prefetch("product__parameters_values", queryset=ProductsParameters.objects.all()),
+        )
+        .all()
+    )
     search_fields = ["product__model", "product__name", "product__category__name", "shop__name"]
     ordering_fields = ["price", "quantity"]
     filterset_class = StockFilter
@@ -234,7 +281,7 @@ class EmailObtainAuthToken(ObtainAuthToken):
     """View-class для получения токена аутентификации по email и паролю.
 
     Поддерживаемые HTTP-методы:
-    - POST: Создание и получение токена. Для получения необходимо передать email
+    - POST: Создание и получение токена. Для этого необходимо передать email
         зарегистрированного пользователя (str) и пароль (str).
         Пример тела запроса (в формате JSON):
             {
@@ -254,7 +301,7 @@ class CartViewSet(ModelViewSet):
     Поддерживаемые HTTP-методы:
     - GET-list: Получение информации о товарах в корзине.
     - GET-detail: Получение информации о конкретном товаре в корзине.
-    - POST: Добавление товара в корзину. Для добавления необходимо передать информацию о
+    - POST: Добавление товара в корзину. Для этого необходимо передать информацию о
         добавляемом продукте (stock.id) и количестве (int).
         Пример тела запроса (в формате JSON):
             {
@@ -264,7 +311,7 @@ class CartViewSet(ModelViewSet):
     - PATCH: Изменение существующей записи о товаре в корзине.
         Изменению доступны поля "product" и "quantity".
     - DELETE: Удаление товара из корзины.
-    - POST /confirm/: Подтверждение заказа всех имеющихся товаров в корзине. Для подтверждения
+    - POST /confirm/: Подтверждение заказа всех имеющихся товаров в корзине. Для этого
         необходимо передать информацию об адресе доставки (contact.id):
         Пример тела запроса (в формате JSON):
             {
@@ -300,7 +347,7 @@ class CartViewSet(ModelViewSet):
         data: dict = self.get_confirm_data()
         data.update(request.data)
         order_ser: OrderSerializer = self.create_order(orders=orders, data=[data])
-        return Response(order_ser.data)
+        return Response(order_ser.data, status=status.HTTP_201_CREATED)
 
 
 class OrdersView(ListAPIView):
@@ -316,12 +363,29 @@ class OrdersView(ListAPIView):
     - status (str): По статусу заказа (например, .../?status=created)
     - created: По дате создания заказа.
         Параметры:
-        - created_before (date): Создано до (например, .../?created_before=2025-03-03)
-        - created_after (date): Создано после (например, .../?created_after=2025-03-03)
+        - created_before (date): Создано до (например, .../?created_before=2025-03-31)
+        - created_after (date): Создано после (например, .../?created_after=2025-03-31)
     """
 
     serializer_class = OrderSerializer
-    queryset = Order.objects.exclude(status="in_cart").order_by("-created_at").all()
+    queryset = (
+        Order.objects.exclude(status="in_cart")
+        .order_by("-created_at")
+        .select_related(
+            "customer",
+            "product__product",
+            "product__product__category",
+            "product__shop",
+            "delivery_address",
+        )
+        .prefetch_related(
+            Prefetch("product__product__parameters", queryset=Parameter.objects.all()),
+            Prefetch(
+                "product__product__parameters_values", queryset=ProductsParameters.objects.all()
+            ),
+        )
+        .all()
+    )
     filterset_class = OrderFilter
     permission_classes = [IsAuthenticated]
 

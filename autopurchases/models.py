@@ -1,4 +1,5 @@
-from datetime import date, datetime
+import secrets
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from django.apps import apps
@@ -7,6 +8,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 STATUS_CHOICES = {
@@ -92,6 +94,31 @@ class Contact(models.Model):
     class Meta:
         verbose_name = "Контакты пользователя"
         verbose_name_plural = "Контакты пользователей"
+
+
+class PasswordResetToken(models.Model):
+    """Модель таблицы PasswordResetToken"""
+
+    user: User = models.OneToOneField(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="Пользователь",
+        related_name="reset_token",
+    )
+    token: str = models.CharField(max_length=43, unique=True, verbose_name="Токен сброса пароля")
+    exp_time: datetime = models.DateTimeField(verbose_name="Действителен до")
+
+    def save(self, *args, **kwargs):
+        self.token = secrets.token_urlsafe(nbytes=32)
+        self.exp_time = timezone.now() + timedelta(hours=1)
+        return super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return timezone.now() < self.exp_time
+
+    class Meta:
+        verbose_name = "Токен сброса пароля"
+        verbose_name_plural = "Токены сброса пароля"
 
 
 class Shop(models.Model):

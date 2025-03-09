@@ -3,6 +3,7 @@ from django.core.mail import EmailMessage
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
+from autopurchases.models import PasswordResetToken
 
 from autopurchases.models import Order, User
 from autopurchases.tasks import send_email
@@ -23,3 +24,8 @@ def new_user_registered(sender: User, instance: User = None, created: bool = Fal
             "AupurchasesDjangoApp Team."
         )
         send_email.delay_on_commit(subject=subject, body=body, to=[instance.email])
+
+
+@receiver(post_save, sender=PasswordResetToken)
+def reset_token_created(sender: PasswordResetToken, instance: PasswordResetToken = None, **kwargs):
+    pass
