@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
@@ -103,15 +104,10 @@ class PasswordResetToken(models.Model):
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name="Пользователь",
-        related_name="reset_token",
+        related_name="rtoken",
     )
-    token: str = models.CharField(max_length=43, unique=True, verbose_name="Токен сброса пароля")
+    rtoken: UUID = models.UUIDField(unique=True, verbose_name="Токен сброса пароля")
     exp_time: datetime = models.DateTimeField(verbose_name="Действителен до")
-
-    def save(self, *args, **kwargs):
-        self.token = secrets.token_urlsafe(nbytes=32)
-        self.exp_time = timezone.now() + timedelta(hours=1)
-        return super().save(*args, **kwargs)
 
     def is_valid(self):
         return timezone.now() < self.exp_time

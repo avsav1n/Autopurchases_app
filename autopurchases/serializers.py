@@ -16,6 +16,7 @@ from autopurchases.models import (
     Contact,
     Order,
     Parameter,
+    PasswordResetToken,
     Product,
     ProductsParameters,
     Shop,
@@ -58,6 +59,20 @@ class UserSerializer(serializers.ModelSerializer):
             validated_data["password"] = make_password(password=password)
         user: User = super().update(instance=instance, validated_data=validated_data)
         return user
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    rtoken = serializers.UUIDField()
+    password = serializers.CharField(max_length=128)
+
+    def validate_password(self, value: str):
+        # validate_password(value)
+        print("validate password")
+        return value
 
 
 class ShopSerializer(serializers.ModelSerializer):

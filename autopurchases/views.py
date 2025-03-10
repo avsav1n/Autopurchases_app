@@ -1,10 +1,13 @@
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pprint import pp
 
 import yaml
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Prefetch, QuerySet
 from django.shortcuts import get_object_or_404
@@ -12,7 +15,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, ListCreateAPIView
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -46,7 +49,9 @@ from autopurchases.serializers import (
     CartSerialaizer,
     ContactSerializer,
     EmailAuthTokenSerializer,
+    EmailSerializer,
     OrderSerializer,
+    PasswordResetSerializer,
     ProductSerializer,
     ShopSerializer,
     StockSerializer,
@@ -88,14 +93,13 @@ class UserViewSet(ModelViewSet):
     """
 
     serializer_class = UserSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.prefetch_related("contacts").all()
     permission_classes = [IsMeOrAdmin]
 
     @action(methods=["POST"], detail=True, url_path="contacts", url_name="create-contact")
     def create_contact(self, request: Request, pk: int) -> Response:
         user: User = self.get_object()
-        data: dict[str, str] = request.data
-        contact_ser = ContactSerializer(data=data, context={"request": self.request})
+        contact_ser = ContactSerializer(data=request.data, context={"request": self.request})
         contact_ser.is_valid(raise_exception=True)
         contact_ser.save()
 
@@ -110,7 +114,7 @@ class UserViewSet(ModelViewSet):
     )
     def delete_contact(self, request: Request, pk: int, contact_pk: str) -> Response:
         user: User = self.get_object()
-        contact: Contact = user.contacts.filter(pk=int(contact_pk)).first()
+        contact: Contact | None = user.contacts.filter(pk=int(contact_pk)).first()
         if contact is None:
             return Response(
                 {"error": "Only contact owners can make changes"},
@@ -123,14 +127,36 @@ class UserViewSet(ModelViewSet):
 
     @action(methods=["GET"], detail=False, url_path="reset", url_name="reset-password")
     def get_password_reset_token(self, request: Request):
-        email: str = request.data.get("email")
-        if email is None:
-            return Response({"error": "No email"}, status=status.HTTP_400_BAD_REQUEST)
-        user: User = get_object_or_404(User, email=email)
-        PasswordResetToken.objects.update_or_create(user=user)
-        return Response(
-            {"message": f"New password reset token sent to {email}"}, status=status.HTTP_200_OK
+        email_ser = EmailSerializer(data=request.data)
+        email_ser.is_valid(raise_exception=True)
+        user: User = get_object_or_404(User, email=email_ser.validated_data["email"])
+        PasswordResetToken.objects.update_or_create(
+            user=user,
+            defaults={"token": uuid.uuid4(), "exp_time": timezone.now() + timedelta(hours=1)},
         )
+        return Response(
+            {"message": f"Password reset token sent to {email_ser.validated_data["email"]}"},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        methods=["PATCH"],
+        detail=False,
+        url_path="reset/confirm",
+        url_name="reset-password-confirm",
+    )
+    def update_password(self, request: Request):
+        rtoken_ser = PasswordResetSerializer(data=request.data)
+        rtoken_ser.is_valid(raise_exception=True)
+        rtoken = get_object_or_404(PasswordResetToken, rtoken=rtoken_ser.validated_data["rtoken"])
+        if not rtoken.is_valid():
+            return Response(
+                {"error": "Password reset token expired"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        user: User = rtoken.user
+        user.set_password(raw_password=rtoken_ser.validated_data["password"])
+        user.save()
+        return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
 
 
 class ShopViewSet(ModelViewSet):
@@ -147,7 +173,7 @@ class ShopViewSet(ModelViewSet):
                 file: BytesIO | None = request.FILES.get("file", None)
                 if file is None:
                     return Response(
-                        {"error": "No attachment"},
+                        {"error": "Attachment required"},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 match file.content_type:
