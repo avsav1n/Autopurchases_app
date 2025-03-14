@@ -46,6 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {"password": {"write_only": True}, "username": {"required": False}}
 
     def validate_password(self, value: str):
+        # FIXME
         # validate_password(value)
         return value
 
@@ -70,6 +71,7 @@ class PasswordResetSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=128)
 
     def validate_password(self, value: str):
+        # FIXME
         # validate_password(value)
         print("validate password")
         return value
@@ -93,8 +95,9 @@ class ShopSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict):
         managers: list["User"] | None = validated_data.pop("managers", None)
         shop: Shop = super().create(validated_data=validated_data)
-
-        creator: User = self.context["request"].user
+        creator: User = (
+            self.context["creator"] if "creator" in self.context else self.context["request"].user
+        )
         all_managers = []
         if managers is not None:
             all_managers = [

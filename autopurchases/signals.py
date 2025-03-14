@@ -9,7 +9,7 @@ from autopurchases.tasks import send_email
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def new_user_registered(sender: User, instance: User = None, created: bool = False, **kwargs):
+def new_user_registered(sender: User, instance: User, created: bool = False, **kwargs):
     if created:
         Token.objects.create(user=instance)
         subject = "Welcome to the AutopurchasesDjangoApp!"
@@ -21,13 +21,13 @@ def new_user_registered(sender: User, instance: User = None, created: bool = Fal
             "AutopurchasesDjangoApp Team."
         )
         # FIXME
-        # send_email.delay_on_commit(subject=subject, body=body, to=[instance.email])
-        email = EmailMessage(subject=subject, body=body, to=[instance.email])
-        email.send()
+        send_email.delay(subject=subject, body=body, to=[instance.email])
+        # email = EmailMessage(subject=subject, body=body, to=[instance.email])
+        # email.send()
 
 
 @receiver(post_save, sender=PasswordResetToken)
-def reset_token_created(sender: PasswordResetToken, instance: PasswordResetToken = None, **kwargs):
+def reset_token_created(sender: PasswordResetToken, instance: PasswordResetToken, **kwargs):
     subject = "Password reset token."
     body = (
         f"Hello {f'{instance.user.username}'}!\n"

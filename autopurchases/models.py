@@ -9,6 +9,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.db.models.manager import Manager
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -223,6 +224,20 @@ class ProductsParameters(models.Model):
                 fields=["product", "parameter", "value"], name="unique-product-parameter"
             )
         ]
+
+
+class OrderManager(Manager):
+    def for_response(self):
+        return self.select_related(
+            "customer",
+            "product__product",
+            "product__product__category",
+            "product__shop",
+            "delivery_address",
+        ).prefetch_related(
+            "product__product__parameters",
+            "product__product__parameters_values",
+        )
 
 
 class Stock(models.Model):

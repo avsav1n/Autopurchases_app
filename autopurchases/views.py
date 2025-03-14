@@ -5,6 +5,7 @@ from io import BytesIO
 from pprint import pp
 
 import yaml
+from celery.result import AsyncResult
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -19,8 +20,11 @@ from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, ListCreateAPIView
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_yaml.parsers import YAMLParser
 from rest_framework_yaml.renderers import YAMLRenderer
@@ -57,6 +61,7 @@ from autopurchases.serializers import (
     StockSerializer,
     UserSerializer,
 )
+from autopurchases.tasks import export_shop, import_shop
 
 
 class UserViewSet(ModelViewSet):
@@ -167,14 +172,13 @@ class ShopViewSet(ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsManagerOrAdminOrReadOnly]
 
     def get_data(self, request: Request) -> dict[str, str | list[dict]]:
-        content_type, *_ = request.content_type.split(";", maxsplit=1)
+        content_type = request.content_type.split(";")[0]
         match content_type:
             case "multipart/form-data":
                 file: BytesIO | None = request.FILES.get("file", None)
                 if file is None:
                     return Response(
-                        {"error": "Attachment required"},
-                        status=status.HTTP_400_BAD_REQUEST,
+                        {"error": "Attachment required"}, status=status.HTTP_400_BAD_REQUEST
                     )
                 match file.content_type:
                     case "application/yaml":
@@ -183,10 +187,7 @@ class ShopViewSet(ModelViewSet):
                         data = json.load(file.read().decode())
                     case _:
                         return Response(
-                            {
-                                "error": "Requires content type of attached file. "
-                                "Available processing of JSON and YAML files."
-                            },
+                            {"error": "Attached file's content type required"},
                             status=status.HTTP_400_BAD_REQUEST,
                         )
             case "application/json" | "application/yaml":
@@ -216,41 +217,24 @@ class ShopViewSet(ModelViewSet):
         order_ser = OrderSerializer(orders, many=True)
         return Response(order_ser.data)
 
-    @action(methods=["POST"], detail=False, url_path="import", url_name="import")
-    @transaction.atomic
+    @action(
+        methods=["POST"],
+        detail=False,
+        url_path="import",
+        url_name="import",
+        parser_classes=[MultiPartParser, JSONParser, YAMLParser],
+    )
     def import_shop_from_file(self, request: Request) -> Response:
         data: dict[str, str | list[dict]] = self.get_data(request=request)
-        shop_info: str = data["shop"]
-        shop_ser = ShopSerializer(data=shop_info, context={"request": self.request})
-        shop_ser.is_valid(raise_exception=True)
-        shop_ser.save()
-
-        products_info: list[dict] = data["products"]
-        products_ser = ProductSerializer(
-            data=products_info,
-            many=True,
-            context={"request": self.request, "shop": shop_ser.instance},
-        )
-        products_ser.is_valid(raise_exception=True)
-        products_ser.save()
-
-        repr = {"shop": shop_ser.data["name"], "products": products_ser.data}
-        return Response(repr)
+        user_id: int = request.user.id
+        task: AsyncResult = import_shop.delay(data=data, user_id=user_id)
+        return Response({"task_id": task.id, "status": task.status})
 
     @action(methods=["GET"], detail=True, url_path="export", url_name="export")
     def export_shop_to_file(self, request: Request, pk: int) -> Response:
         shop: Shop = self.get_object()
-        products: QuerySet[Product] = shop.products.all()
-
-        shop_ser = ShopSerializer(shop, context={"request": self.request})
-        products_ser = ProductSerializer(
-            products,
-            many=True,
-            context={"request": self.request, "shop": shop_ser.instance},
-        )
-
-        repr = {"shop": shop_ser.data["name"], "products": products_ser.data}
-        return Response(repr)
+        task: AsyncResult = export_shop.delay(shop_id=shop.id)
+        return Response({"task_id": task.id, "status": task.status})
 
 
 class StockView(ListAPIView):
@@ -418,3 +402,42 @@ class OrdersView(ListAPIView):
     def get_queryset(self) -> QuerySet[Order]:
         queryset: QuerySet[Order] = super().get_queryset()
         return queryset.filter(customer=self.request.user)
+
+
+class CeleryView(APIView):
+    """View-class для отслеживания статуса выполения асинхронных задач Celery.
+
+    Поддерживаемые HTTP-методы:
+    - GET-detail: Получение информации о статусе задачи по указанному task_id.
+    """
+
+    def get(self, request: Request, task_id: str):
+        task = AsyncResult(id=task_id)
+        response = {"task_id": task.id, "status": task.status}
+        if task.ready() and task.result is not None:
+            response.update(
+                {
+                    "link": f"http://localhost:8000{reverse('autopurchases:download-file', kwargs={"task_id": task.id})}"
+                }
+            )
+        return Response(response)
+
+
+class DownloadFileView(APIView):
+    """View-class для получения выгрузки данных о магазине в виде файла.
+
+    Поддерживаемые HTTP-методы:
+    - GET-detail: Получение файла с данными о магазине. Для выбора типа файла (yaml или json)
+        необходимо передать заголовок Accept в запросе.
+    """
+
+    renderer_classes = [YAMLRenderer, JSONRenderer]
+
+    def get(self, request: Request, task_id: str):
+        task = AsyncResult(id=task_id)
+        ext = request.accepted_renderer.format
+        filename = f"{task.result['shop']}_{timezone.now().date()}.{ext}"
+        resp = Response(task.result)
+        resp["Content-Disposition"] = f"attachment; filename={filename}"
+
+        return resp
