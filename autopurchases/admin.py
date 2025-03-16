@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.forms import UserChangeForm
 from django.http import HttpRequest
 
-from autopurchases.models import Category, Parameter, Product, Shop, Stock, User
+from autopurchases.models import Category, Order, Parameter, Product, Shop, Stock, User
 
 
 class ProductsParametersInline(admin.TabularInline):
@@ -73,4 +73,14 @@ class ParameterAdmin(admin.ModelAdmin):
 
 @admin.register(Stock)
 class StockAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Shop)
+class ShopAdmin(admin.ModelAdmin):
     pass

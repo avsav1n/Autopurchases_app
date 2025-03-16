@@ -9,12 +9,12 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
-from django.db.models.manager import Manager
+from django.db.models import QuerySet
 from django.utils import timezone
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 STATUS_CHOICES = {
-    "in_cart": "В корзине",
     "created": "Создан",
     "confirmed": "Подтвержден",
     "assembled": "Собран",
@@ -81,6 +81,8 @@ class Contact(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Пользователь",
         related_name="contacts",
+        blank=True,
+        null=True,
     )
 
     city: str = models.CharField(verbose_name="Город", max_length=50)
@@ -96,6 +98,14 @@ class Contact(models.Model):
     class Meta:
         verbose_name = "Контакты пользователя"
         verbose_name_plural = "Контакты пользователей"
+        # FIXME
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=["city", "street", "house", "appartment"],
+        #         name="unique_address",
+        #         nulls_distinct=False,
+        #     )
+        # ]
 
 
 class PasswordResetToken(models.Model):
@@ -124,6 +134,7 @@ class Shop(models.Model):
     name: str = models.CharField(verbose_name="Название", max_length=50, unique=True)
     created_at: date = models.DateField(verbose_name="Дата создания", auto_now_add=True)
     updated_at: date = models.DateField(verbose_name="Обновлено", auto_now=True)
+    slug: str = models.SlugField(verbose_name="Slug", unique=True)
     managers: list["User"] = models.ManyToManyField(
         to=settings.AUTH_USER_MODEL,
         through="ShopsManagers",
@@ -135,16 +146,21 @@ class Shop(models.Model):
         verbose_name = "Магазин"
         verbose_name_plural = "Магазины"
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.slug = slugify(self.name)
+        return super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.__class__.__name__}: {self.name}"
 
 
 class ShopsManagers(models.Model):
-    manager: list["User"] = models.ForeignKey(
+    manager: User = models.ForeignKey(
         to="User", on_delete=models.CASCADE, verbose_name="Управляющие"
     )
-    shop: list["Shop"] = models.ForeignKey(
-        to="Shop", on_delete=models.CASCADE, verbose_name="Магазины"
+    shop: Shop = models.ForeignKey(
+        to="Shop", on_delete=models.CASCADE, verbose_name="Магазины", related_name="managers_roles"
     )
     is_owner: bool = models.BooleanField(verbose_name="Собственник", default=False)
 
@@ -226,17 +242,14 @@ class ProductsParameters(models.Model):
         ]
 
 
-class OrderManager(Manager):
-    def for_response(self):
+class StockManager(models.Manager):
+    def with_dependencies(self) -> QuerySet:
         return self.select_related(
-            "customer",
-            "product__product",
-            "product__product__category",
-            "product__shop",
-            "delivery_address",
+            "product__category",
+            "shop",
         ).prefetch_related(
-            "product__product__parameters",
-            "product__product__parameters_values",
+            "product__parameters",
+            "product__parameters_values",
         )
 
 
@@ -246,7 +259,12 @@ class Stock(models.Model):
     Таблица m2m отношения между Product и Shop.
     """
 
-    shop: Shop = models.ForeignKey(to="Shop", on_delete=models.CASCADE, verbose_name="Магазин")
+    objects: models.Manager = StockManager()
+    shop: Shop = models.ForeignKey(
+        to="Shop",
+        on_delete=models.CASCADE,
+        verbose_name="Магазин",
+    )
     product: Product = models.ForeignKey(
         to="Product",
         on_delete=models.CASCADE,
@@ -263,12 +281,7 @@ class Stock(models.Model):
         ]
 
 
-class Order(models.Model):
-    """Модель таблицы Order
-
-    Таблица m2m отношения между Customer и Stock
-    """
-
+class BaseOrder(models.Model):
     customer: User = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -279,26 +292,61 @@ class Order(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Товар",
     )
+    quantity: int = models.PositiveIntegerField(verbose_name="Количество")
+    total_price: int = models.PositiveBigIntegerField(verbose_name="Итоговая стоимость")
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        self.total_price = self.product.price * self.quantity
+        return super().save(*args, **kwargs)
+
+
+class CartManager(models.Manager):
+    def with_dependencies(self) -> QuerySet:
+        return self.select_related(
+            "customer",
+            "product__product",
+            "product__product__category",
+            "product__shop",
+        ).prefetch_related(
+            "product__product__parameters",
+            "product__product__parameters_values",
+        )
+
+
+class Cart(BaseOrder):
+    objects = CartManager()
+
+    class Meta:
+        verbose_name_plural = "Товары в корзине"
+
+
+class OrderManager(CartManager):
+    def with_dependencies(self) -> QuerySet:
+        return super().with_dependencies().select_related("delivery_address")
+
+
+class Order(BaseOrder):
+    """Модель таблицы Order
+
+    Таблица m2m отношения между Customer и Stock
+    """
+
+    objects = OrderManager()
     delivery_address: Contact = models.ForeignKey(
         to="Contact",
         on_delete=models.CASCADE,
         verbose_name="Адрес доставки",
-        related_name="orders",
-        null=True,
-        blank=True,
     )
-    quantity: int = models.PositiveIntegerField(verbose_name="Количество")
-    total_price: int = models.PositiveBigIntegerField(verbose_name="Итоговая стоимость")
     status: str = models.CharField(
-        verbose_name="Статус заказа", max_length=50, choices=STATUS_CHOICES, default="in_cart"
+        verbose_name="Статус заказа", max_length=50, choices=STATUS_CHOICES, default="created"
     )
-    created_at: datetime = models.DateTimeField(verbose_name="Дата создания", null=True, blank=True)
+    created_at: datetime = models.DateTimeField(verbose_name="Дата создания", auto_now_add=True)
     updated_at: datetime = models.DateTimeField(verbose_name="Обновлено", auto_now=True)
 
     class Meta:
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
-
-    def save(self, *args, **kwargs):
-        self.total_price = self.product.price * self.quantity
-        return super().save(*args, **kwargs)
+        ordering = ["-created_at"]

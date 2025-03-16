@@ -26,6 +26,7 @@ SECRET_KEY = "django-insecure-rkfl_4k3qa+)#6*ddpe7)3bx$#=-2zn5r*eewn&@+mrk6wb$dg
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
 ALLOWED_HOSTS = ["*"]
 
 
@@ -129,15 +130,17 @@ STATIC_ROOT = BASE_DIR / "static"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Django rest framework
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
     ],
-    "DEFAULT_PARSER_CLASSES": [
-        "rest_framework_yaml.parsers.YAMLParser",
-        "rest_framework.parsers.JSONParser",
-        "rest_framework.parsers.MultiPartParser",
-    ],
+    # "DEFAULT_PARSER_CLASSES": [
+    #     "rest_framework_yaml.parsers.YAMLParser",
+    #     "rest_framework.parsers.JSONParser",
+    #     "rest_framework.parsers.MultiPartParser",
+    # ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
@@ -145,20 +148,94 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Default user model
+
 AUTH_USER_MODEL = "autopurchases.User"
 
-# Celery settings
+# Logging
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "formatters": {
+        "django.server": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{server_time}] {message}",
+            "style": "{",
+        },
+        "autopurchases": {
+            "()": "autopurchases.formatters.AutopurchasesFormatter",
+            "format": "[{server_time}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+        },
+        "django.server": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "django.server",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+        "autopurchases": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "autopurchases",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "mail_admins"],
+            "level": "INFO",
+        },
+        "django.server": {
+            "handlers": ["django.server"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "autopurchases": {
+            "handlers": ["autopurchases"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
+
+# Celery
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "django-db"
 
-# Email settings
+# Smtp server settings
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.mail.ru"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Development settings
+
+if DEBUG == True:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_STORE_EAGER_RESULT = True
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

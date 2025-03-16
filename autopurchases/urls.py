@@ -20,10 +20,10 @@ from rest_framework.routers import DefaultRouter
 
 from autopurchases.views import (
     CartViewSet,
-    CeleryView,
+    CeleryTaskView,
     DownloadFileView,
     EmailObtainAuthToken,
-    OrdersView,
+    OrderView,
     ShopViewSet,
     StockView,
     UserViewSet,
@@ -37,9 +37,9 @@ router.register("cart", CartViewSet, basename="cart")
 app_name = "autopurchases"
 urlpatterns = [
     path("", include(router.urls)),
-    path("order/", OrdersView.as_view(), name="order"),
+    path("order/", OrderView.as_view(), name="order"),
     path("stock/", StockView.as_view(), name="stock"),
-    path("task/<str:task_id>/", CeleryView.as_view(), name="celery-results"),
+    path("task/<str:task_id>/", CeleryTaskView.as_view(), name="celery-results"),
     path("download/<str:task_id>/", DownloadFileView.as_view(), name="download-file"),
     path("login/", EmailObtainAuthToken.as_view(), name="login"),
 ]
