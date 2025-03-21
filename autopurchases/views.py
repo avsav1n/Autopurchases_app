@@ -1,18 +1,14 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from io import BytesIO
-from pprint import pp
 
 import yaml
 from celery.result import AsyncResult
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.core.validators import validate_email
-from django.db import transaction
-from django.db.models import Prefetch, QuerySet
-from django.http.response import Http404
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -22,10 +18,9 @@ from rest_framework.exceptions import (
     AuthenticationFailed,
     NotFound,
     ParseError,
-    PermissionDenied,
     UnsupportedMediaType,
 )
-from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.renderers import JSONRenderer
@@ -41,19 +36,14 @@ from autopurchases.exceptions import BadRequest
 from autopurchases.filters import OrderFilter, StockFilter
 from autopurchases.models import (
     Cart,
-    Category,
     Contact,
     Order,
-    Parameter,
     PasswordResetToken,
-    Product,
-    ProductsParameters,
     Shop,
     Stock,
     User,
 )
 from autopurchases.permissions import (
-    IsAdminOrReadOnly,
     IsCartOwnerOrAdmin,
     IsManagerOrAdmin,
     IsManagerOrAdminOrReadOnly,
@@ -66,7 +56,6 @@ from autopurchases.serializers import (
     EmailSerializer,
     OrderSerializer,
     PasswordResetSerializer,
-    ProductSerializer,
     ShopSerializer,
     StockSerializer,
     UserSerializer,
@@ -74,6 +63,7 @@ from autopurchases.serializers import (
 from autopurchases.tasks import export_shop, import_shop
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
 class UserFilterMixin:
@@ -102,8 +92,9 @@ class UserViewSet(ModelViewSet):
             {
                 "email": str,
                 "password": str,
-                "username": str,  # опционально
-                "phone": str      # опционально
+                "phone": str,       # опционально
+                "first_name": str,  # опционально
+                "last_name": str    # опционально
             }
     - PATCH: Изменение профиля пользователя.
     - DELETE: Удаление профиля пользователя.
@@ -156,11 +147,11 @@ class UserViewSet(ModelViewSet):
     )
     def delete_contact(self, request: Request, pk: int, contact_pk: str) -> Response:
         user: User = self.get_object()
-        contact: Contact | None = user.contacts.filter(pk=int(contact_pk)).first()
+        contact: Contact | None = UserModel.contacts.filter(pk=int(contact_pk)).first()
         if contact is None:
-            error_message = "Contact not found"
-            logger.error(error_message)
-            raise BadRequest(error_message)
+            error_msg = "Contact not found"
+            logger.error(error_msg)
+            raise BadRequest(error_msg)
         contact.delete()
 
         user_ser = UserSerializer(user)
@@ -171,15 +162,12 @@ class UserViewSet(ModelViewSet):
         email_ser = EmailSerializer(data=request.data)
         email_ser.is_valid(raise_exception=True)
         try:
-            user: User | None = User.objects.get(email=email_ser.validated_data["email"])
+            user: User | None = UserModel.objects.get(email=email_ser.validated_data["email"])
         except ObjectDoesNotExist:
-            error_message = "User not found"
-            logger.error(error_message)
-            raise NotFound(error_message)
-        PasswordResetToken.objects.update_or_create(
-            user=user,
-            defaults={"token": uuid.uuid4(), "exp_time": timezone.now() + timedelta(hours=1)},
-        )
+            error_msg = "User not found"
+            logger.error(error_msg)
+            raise NotFound(error_msg)
+        PasswordResetToken.objects.update_or_create(user=user, defaults={"token": uuid.uuid4()})
         return Response(
             {"message": f"Password reset token sent to {email_ser.validated_data["email"]}"},
             status=status.HTTP_200_OK,
@@ -196,9 +184,9 @@ class UserViewSet(ModelViewSet):
         rtoken_ser.is_valid(raise_exception=True)
         rtoken = get_object_or_404(PasswordResetToken, rtoken=rtoken_ser.validated_data["rtoken"])
         if not rtoken.is_valid():
-            error_message = "Password reset token expired"
-            logger.warning(error_message)
-            raise AuthenticationFailed(error_message)
+            error_msg = "Password reset token expired"
+            logger.warning(error_msg)
+            raise AuthenticationFailed(error_msg)
         user: User = rtoken.user
         user.set_password(raw_password=rtoken_ser.validated_data["password"])
         user.save()
@@ -272,27 +260,27 @@ class ShopViewSet(ModelViewSet):
             case "multipart/form-data":
                 file: BytesIO | None = request.FILES.get("file", None)
                 if file is None:
-                    error_message = "Attachment required"
-                    logger.warning(error_message)
-                    raise BadRequest(error_message)
+                    error_msg = "Attachment required"
+                    logger.warning(error_msg)
+                    raise BadRequest(error_msg)
                 match file.content_type:
                     case "application/yaml":
                         data = yaml.safe_load(file.read().decode())
                     case "application/json":
                         data = json.load(file.read().decode())
                     case _:
-                        error_message = "Attached file's content type required"
-                        logger.warning(error_message)
-                        raise ParseError(error_message)
+                        error_msg = "Attached file's content type required"
+                        logger.warning(error_msg)
+                        raise ParseError(error_msg)
             case "application/json" | "application/yaml":
                 data = request.data
             case _ as unsupported_type:
-                error_message = (
+                error_msg = (
                     "Shop import is available with 'multipart/form-data', "
                     "'application/json' or 'application/yaml' content types"
                 )
-                logger.warning(error_message)
-                raise UnsupportedMediaType(unsupported_type, error_message)
+                logger.warning(error_msg)
+                raise UnsupportedMediaType(unsupported_type, error_msg)
         return data
 
     @action(
@@ -318,20 +306,13 @@ class ShopViewSet(ModelViewSet):
     )
     def update_shop_orders(self, request: Request, slug: str, order_pk: str) -> Response:
         shop: Shop = self.get_object()
-        # data_for_update = {
-        #     attr: value for attr, value in request.data.items() if attr in ("status",)
-        # }
-        # if not data_for_update:
-        #     error_message = "The shop can only update the order status"
-        #     logger.warning(error_message)
-        #     raise BadRequest(error_message)
         order: Order | None = (
             Order.objects.with_dependencies().filter(product__shop=shop, pk=int(order_pk)).first()
         )
         if order is None:
-            error_message = "Order not found"
-            logger.error(error_message)
-            raise BadRequest(error_message)
+            error_msg = "Order not found"
+            logger.error(error_msg)
+            raise BadRequest(error_msg)
         order_ser = OrderSerializer(
             instance=order, data=request.data, partial=True, context={"request": request}
         )
@@ -350,9 +331,9 @@ class ShopViewSet(ModelViewSet):
         shop: Shop = self.get_object()
         stock = Stock.objects.with_dependencies().filter(shop=shop, pk=stock_pk).first()
         if stock is None:
-            error_message = "Product not found"
-            logger.error(error_message)
-            raise BadRequest(error_message)
+            error_msg = "Product not found"
+            logger.error(error_msg)
+            raise BadRequest(error_msg)
         stock_ser = StockSerializer(instance=stock, data=request.data, partial=True)
         stock_ser.is_valid(raise_exception=True)
         stock_ser.save()
@@ -482,10 +463,12 @@ class CartViewSet(UserFilterMixin, ModelViewSet):
     def confirm_order(self, request: Request) -> Response:
         cart: QuerySet[Cart] = self.get_queryset()
         if not cart.exists():
-            error_message = "Cart is empty"
-            logger.error(error_message)
-            raise NotFound(error_message)
-        order_ser = OrderSerializer(data=[request.data], many=True, context={"cart": cart})
+            error_msg = "Cart is empty"
+            logger.error(error_msg)
+            raise NotFound(error_msg)
+        order_ser = OrderSerializer(
+            data=[request.data], many=True, context={"cart": cart, "request": request}
+        )
         order_ser.is_valid(raise_exception=True)
         order_ser.save()
         return Response(order_ser.data, status=status.HTTP_201_CREATED)

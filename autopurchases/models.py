@@ -1,9 +1,7 @@
-import secrets
 import uuid
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -55,57 +53,63 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UserManager()
-    email = models.EmailField(verbose_name="Электронная почта", unique=True)
-    username = models.CharField(
-        _("username"),
+    username = None
+    email = models.EmailField(
+        verbose_name=_("Email address"),
+        unique=True,
         max_length=150,
-        help_text=_("Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."),
-        validators=[UnicodeUsernameValidator()],
-        blank=True,
-        null=True,
+        help_text=_("Required. 150 characters or fewer."),
     )
     phone: str = models.CharField(
-        verbose_name="Номер телефона",
-        max_length=50,
-        blank=True,
-        null=True,
-    )
-
-    def __str__(self):
-        return f"{self.__class__.__name__}: {self.email}"
-
-
-class Contact(models.Model):
-    user: User = models.ForeignKey(
-        to="User",
-        on_delete=models.CASCADE,
-        verbose_name="Пользователь",
-        related_name="contacts",
-        blank=True,
-        null=True,
-    )
-
-    city: str = models.CharField(verbose_name="Город", max_length=50)
-    street: str = models.CharField(verbose_name="Улица", max_length=50)
-    house: str = models.CharField(verbose_name="Дом", max_length=50)
-    apartment: str = models.CharField(
-        verbose_name="Квартира",
+        verbose_name=_("Phone number"),
         max_length=50,
         blank=True,
         null=True,
     )
 
     class Meta:
-        verbose_name = "Контакты пользователя"
-        verbose_name_plural = "Контакты пользователей"
-        # FIXME
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=["city", "street", "house", "appartment"],
-        #         name="unique_address",
-        #         nulls_distinct=False,
-        #     )
-        # ]
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
+        swappable = "AUTH_USER_MODEL"
+
+    def __str__(self):
+        return self.email
+
+    @property
+    def hello_message(self):
+        return f"Hello{f', {username}' if (username := self.first_name) else ''}!"
+
+
+class Contact(models.Model):
+    user: User = models.ForeignKey(
+        to="User",
+        on_delete=models.CASCADE,
+        verbose_name=_("User"),
+        related_name="contacts",
+        blank=True,
+        null=True,
+        help_text=_("Optional. Link to the user who uses the specified address."),
+    )
+
+    city: str = models.CharField(verbose_name=_("City"), max_length=50)
+    street: str = models.CharField(verbose_name=_("Street"), max_length=50)
+    house: str = models.CharField(verbose_name=_("House"), max_length=50)
+    apartment: str = models.CharField(
+        verbose_name=_("Apartment"),
+        max_length=50,
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _("Contact")
+        verbose_name_plural = _("Contacts")
+
+    def __str__(self):
+        return (
+            f"{self.city}, {self.street}/{self.house}, "
+            f"{f'{self.apartment}' if self.apartment is not None else ''}"
+        )
 
 
 class PasswordResetToken(models.Model):
@@ -114,37 +118,55 @@ class PasswordResetToken(models.Model):
     user: User = models.OneToOneField(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        verbose_name="Пользователь",
+        verbose_name=_("User"),
         related_name="rtoken",
     )
-    rtoken: UUID = models.UUIDField(unique=True, verbose_name="Токен сброса пароля")
-    exp_time: datetime = models.DateTimeField(verbose_name="Действителен до")
+    rtoken: UUID = models.UUIDField(
+        unique=True, default=uuid.uuid4(), verbose_name=_("Password reset token")
+    )
+    created_at: datetime = models.DateTimeField(verbose_name=_("Created"), auto_now=True)
 
-    def is_valid(self):
-        return timezone.now() < self.exp_time
+    def is_valid(self) -> bool:
+        return self.created_at + timedelta(**settings.PASSWORD_RESET_TOKEN_TTL) > timezone.now()
 
     class Meta:
-        verbose_name = "Токен сброса пароля"
-        verbose_name_plural = "Токены сброса пароля"
+        verbose_name = _("Password reset token")
+        verbose_name_plural = _("Password reset tokens")
+
+    def __str__(self):
+        return self.rtoken
 
 
 class Shop(models.Model):
     """Модель таблицы Shop"""
 
-    name: str = models.CharField(verbose_name="Название", max_length=50, unique=True)
-    created_at: date = models.DateField(verbose_name="Дата создания", auto_now_add=True)
-    updated_at: date = models.DateField(verbose_name="Обновлено", auto_now=True)
-    slug: str = models.SlugField(verbose_name="Slug", unique=True)
+    name: str = models.CharField(
+        verbose_name=_("Name"),
+        max_length=50,
+        unique=True,
+        help_text=_("Required. 50 characters or fewer."),
+    )
+    created_at: date = models.DateField(verbose_name=_("Created"), auto_now_add=True)
+    updated_at: date = models.DateField(verbose_name=_("Updated"), auto_now=True)
+    slug: str = models.SlugField(
+        verbose_name=_("Slug"),
+        unique=True,
+        blank=True,
+        help_text=_(
+            "This field is automatically populated based on the name. "
+            "It is used to create human-readable URLs."
+        ),
+    )
     managers: list["User"] = models.ManyToManyField(
         to=settings.AUTH_USER_MODEL,
         through="ShopsManagers",
         related_name="shops",
-        verbose_name="Управляющие",
+        verbose_name=_("Managers"),
     )
 
     class Meta:
-        verbose_name = "Магазин"
-        verbose_name_plural = "Магазины"
+        verbose_name = _("Shop")
+        verbose_name_plural = _("Shops")
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -152,89 +174,116 @@ class Shop(models.Model):
         return super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.name}"
+        return self.name
 
 
 class ShopsManagers(models.Model):
     manager: User = models.ForeignKey(
-        to="User", on_delete=models.CASCADE, verbose_name="Управляющие"
+        to="User",
+        on_delete=models.CASCADE,
+        verbose_name=_("Manager"),
+        related_name="shops_roles",
     )
     shop: Shop = models.ForeignKey(
-        to="Shop", on_delete=models.CASCADE, verbose_name="Магазины", related_name="managers_roles"
+        to="Shop",
+        on_delete=models.CASCADE,
+        verbose_name=_("Shop"),
+        related_name="managers_roles",
     )
-    is_owner: bool = models.BooleanField(verbose_name="Собственник", default=False)
+    is_owner: bool = models.BooleanField(verbose_name=_("Owner"), default=False)
 
 
 class Category(models.Model):
     """Модель таблицы Category"""
 
-    name: str = models.CharField(verbose_name="Название", max_length=50, unique=True)
+    name: str = models.CharField(
+        verbose_name=_("Name"),
+        max_length=50,
+        unique=True,
+        help_text=_("Required. 50 characters or fewer."),
+    )
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.name}"
+        return self.name
 
     class Meta:
-        verbose_name = "Категория"
-        verbose_name_plural = "Категории"
+        verbose_name = _("Category")
+        verbose_name_plural = _("Categories")
 
 
 class Product(models.Model):
     """Модель таблицы Product"""
 
-    model: str = models.CharField(verbose_name="Модель", max_length=50)
-    name: str = models.CharField(verbose_name="Название", max_length=100, unique=True)
     category: Category = models.ForeignKey(
-        to="Category", on_delete=models.CASCADE, verbose_name="Категория"
+        to="Category",
+        on_delete=models.CASCADE,
+        verbose_name=_("Category"),
+    )
+    model: str = models.CharField(
+        verbose_name=_("Model"),
+        max_length=50,
+        help_text=_("Required. 50 characters or fewer."),
+    )
+    name: str = models.CharField(
+        verbose_name=_("Name"),
+        max_length=100,
+        unique=True,
+        help_text=_("Required. 100 characters or fewer."),
     )
     shops: list["Shop"] = models.ManyToManyField(
-        to="Shop", through="Stock", related_name="products", verbose_name="Магазины"
+        to="Shop", through="Stock", related_name="products", verbose_name=_("Shops")
     )
     parameters: list["Parameter"] = models.ManyToManyField(
         to="Parameter",
         through="ProductsParameters",
         related_name="products",
-        verbose_name="Параметры",
+        verbose_name=_("Parameters"),
     )
 
     class Meta:
-        verbose_name = "Товар"
-        verbose_name_plural = "Товары"
+        verbose_name = _("Product")
+        verbose_name_plural = _("Products")
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.name}"
+        return self.name
 
 
 class Parameter(models.Model):
     """Модель таблицы Parameter"""
 
-    name: str = models.CharField(verbose_name="Название", max_length=50, unique=True)
+    name: str = models.CharField(
+        verbose_name=_("Name"),
+        max_length=50,
+        unique=True,
+        help_text=_("Required. 50 characters or fewer."),
+    )
 
     class Meta:
-        verbose_name = "Параметр"
-        verbose_name_plural = "Параметры"
+        verbose_name = _("Parameter")
+        verbose_name_plural = _("Parameters")
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.name}"
+        return self.name
 
 
 class ProductsParameters(models.Model):
     product: Product = models.ForeignKey(
         to="Product",
         on_delete=models.CASCADE,
-        verbose_name="Товар",
+        verbose_name=_("Product"),
         related_name="parameters_values",
     )
     parameter: Parameter = models.ForeignKey(
         to="Parameter",
         on_delete=models.CASCADE,
-        verbose_name="Параметр",
+        verbose_name=_("Parameter"),
         related_name="products_values",
     )
-    value: str = models.CharField(verbose_name="Значение", max_length=50)
+    value: str = models.CharField(verbose_name=_("Value"), max_length=50)
 
     class Meta:
-        verbose_name = "Параметр"
-        verbose_name_plural = "Параметры"
+        verbose_name = _("Parameter")
+        verbose_name_plural = _("Parameters")
         constraints = [
             models.UniqueConstraint(
                 fields=["product", "parameter", "value"], name="unique-product-parameter"
@@ -263,40 +312,60 @@ class Stock(models.Model):
     shop: Shop = models.ForeignKey(
         to="Shop",
         on_delete=models.CASCADE,
-        verbose_name="Магазин",
+        verbose_name=_("Shop"),
     )
     product: Product = models.ForeignKey(
         to="Product",
         on_delete=models.CASCADE,
-        verbose_name="Товар",
+        verbose_name=_("Product"),
     )
-    quantity: int = models.PositiveIntegerField(verbose_name="Количество")
-    price: int = models.PositiveBigIntegerField(verbose_name="Цена")
-    can_buy: bool = models.BooleanField(verbose_name="Доступен для заказа", default=True)
+    quantity: int = models.PositiveIntegerField(
+        verbose_name=_("Quantity"),
+        help_text=_("Quantity of the product in stock."),
+    )
+    price: int = models.PositiveBigIntegerField(
+        verbose_name=_("Price"),
+        help_text=_("Price of the product in minimum monetary units."),
+    )
+    can_buy: bool = models.BooleanField(
+        verbose_name=_("Available for order"),
+        default=True,
+        help_text=_(
+            "Check this if the product is available for order. "
+            "If unchecked, the product will not be displayed on the website."
+        ),
+    )
 
     class Meta:
-        verbose_name_plural = "Каталог товаров"
+        verbose_name = _("Products in stock")
+        verbose_name_plural = _("Products in stock")
         constraints = [
             models.UniqueConstraint(fields=["shop", "product"], name="unique-shop-product")
         ]
+
+    def __str__(self):
+        return f"{self.product.name} ({self.shop.name})"
 
 
 class BaseOrder(models.Model):
     customer: User = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        verbose_name="Заказчик",
+        verbose_name=_("Customer"),
     )
     product: Stock = models.ForeignKey(
         to="Stock",
         on_delete=models.CASCADE,
-        verbose_name="Товар",
+        verbose_name=_("Product"),
     )
-    quantity: int = models.PositiveIntegerField(verbose_name="Количество")
-    total_price: int = models.PositiveBigIntegerField(verbose_name="Итоговая стоимость")
+    quantity: int = models.PositiveIntegerField(verbose_name=_("Quantity"))
+    total_price: int = models.PositiveBigIntegerField(verbose_name=_("Total price"))
 
     class Meta:
         abstract = True
+
+    def __str__(self):
+        return f"{self.customer} | {self.product}"
 
     def save(self, *args, **kwargs):
         self.total_price = self.product.price * self.quantity
@@ -320,7 +389,8 @@ class Cart(BaseOrder):
     objects = CartManager()
 
     class Meta:
-        verbose_name_plural = "Товары в корзине"
+        verbose_name = _("Products in cart")
+        verbose_name_plural = _("Products in cart")
 
 
 class OrderManager(CartManager):
@@ -338,15 +408,18 @@ class Order(BaseOrder):
     delivery_address: Contact = models.ForeignKey(
         to="Contact",
         on_delete=models.CASCADE,
-        verbose_name="Адрес доставки",
+        verbose_name=_("Delivery address"),
     )
     status: str = models.CharField(
-        verbose_name="Статус заказа", max_length=50, choices=STATUS_CHOICES, default="created"
+        verbose_name=_("Order status"), max_length=50, choices=STATUS_CHOICES, default="created"
     )
-    created_at: datetime = models.DateTimeField(verbose_name="Дата создания", auto_now_add=True)
-    updated_at: datetime = models.DateTimeField(verbose_name="Обновлено", auto_now=True)
+    created_at: datetime = models.DateTimeField(verbose_name=_("Created"), auto_now_add=True)
+    updated_at: datetime = models.DateTimeField(verbose_name=_("Updated"), auto_now=True)
 
     class Meta:
-        verbose_name = "Заказ"
-        verbose_name_plural = "Заказы"
+        verbose_name = _("Order")
+        verbose_name_plural = _("Orders")
         ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{super().__str__()} -> {self.delivery_address}"

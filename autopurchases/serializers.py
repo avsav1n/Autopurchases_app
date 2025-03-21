@@ -1,19 +1,15 @@
 import logging
-import uuid
-from collections import defaultdict
-from typing import TypeAlias
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
-from django.db.models import F, QuerySet
-from django.forms import model_to_dict
-from django.utils import timezone
+from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
+from rest_framework.reverse import reverse
 
 from autopurchases.models import (
     Cart,
@@ -21,7 +17,6 @@ from autopurchases.models import (
     Contact,
     Order,
     Parameter,
-    PasswordResetToken,
     Product,
     ProductsParameters,
     Shop,
@@ -31,6 +26,7 @@ from autopurchases.models import (
 )
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -53,9 +49,9 @@ class UserSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True, read_only=True)
 
     class Meta:
-        model = User
-        fields = ["id", "username", "email", "password", "phone", "contacts"]
-        extra_kwargs = {"password": {"write_only": True}, "username": {"required": False}}
+        model = UserModel
+        fields = ["id", "email", "first_name", "last_name", "password", "phone", "contacts"]
+        extra_kwargs = {"password": {"write_only": True}}
 
     def validate_password(self, value: str):
         # FIXME
@@ -83,13 +79,12 @@ class PasswordResetSerializer(serializers.Serializer):
     def validate_password(self, value: str):
         # FIXME
         # validate_password(value)
-        print("validate password")
         return value
 
 
 class ShopSerializer(serializers.ModelSerializer):
     managers = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=User.objects.all(), required=False
+        many=True, queryset=UserModel.objects.all(), required=False
     )
 
     class Meta:
@@ -246,11 +241,13 @@ class EmailAuthTokenSerializer(serializers.Serializer):
             user = authenticate(request=self.context.get("request"), email=email, password=password)
 
             if not user:
-                msg = _("Unable to log in with provided credentials.")
-                raise ValidationError(msg, code="authorization")
+                error_msg = _("Unable to log in with provided credentials.")
+                logger.error(error_msg)
+                raise ValidationError(error_msg, code="authorization")
         else:
-            msg = _('Must include "username" and "password".')
-            raise ValidationError(msg, code="authorization")
+            error_msg = _('Must include "email" and "password".')
+            logger.error(error_msg)
+            raise ValidationError(error_msg, code="authorization")
 
         attrs["user"] = user
         return attrs
@@ -334,8 +331,7 @@ class OrderListSerializer(serializers.ListSerializer):
             try:
                 check_availability(can_buy=stock.can_buy)
                 check_quantity(on_stock=stock.quantity, in_order=product.quantity)
-            except ValidationError as error:
-                logger.error(error.detail)
+            except ValidationError:
                 continue
             with transaction.atomic():
                 stock.quantity -= product.quantity
@@ -387,13 +383,23 @@ class OrderSerializer(serializers.ModelSerializer):
         repr["delivery_address"].pop("id")
         return repr
 
-    def validate_status(self, value: str):
+    def validate_delivery_address(self, value: dict[str, str | int]) -> dict[str, str | int]:
         request: Request = self.context["request"]
-        if not request.path.startswith("/api/v1/shop"):
-            raise ValidationError("Only shops can update the order status")
+        if request.method == "PATCH":
+            error_msg = "Changing the delivery address of the created order is not available"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
         return value
 
-    def update(self, instance: Order, validated_data: dict):
+    def validate_status(self, value: str) -> str:
+        request: Request = self.context["request"]
+        if not request.path.startswith(reverse("autopurchases:shop-list")):
+            error_msg = "Only shops can update the order status"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
+        return value
+
+    def update(self, instance: Order, validated_data: dict) -> Order:
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save(update_fields=validated_data.keys())
@@ -402,9 +408,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
 def check_quantity(on_stock: int, in_order: int) -> None:
     if on_stock < in_order:
-        raise ValidationError("The selected shop does not have enough products in stock")
+        error_msg = "The selected shop does not have enough products in stock"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)
 
 
 def check_availability(can_buy: bool) -> None:
     if not can_buy:
-        raise ValidationError("The selected product is not available for order")
+        error_msg = "The selected product is not available for order"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)

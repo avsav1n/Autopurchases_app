@@ -1,0 +1,336 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-21 20:52+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+#: .\autopurchases\admin.py:50
+msgid "A store can only have one owner."
+msgstr ""
+
+#: .\autopurchases\admin.py:60
+msgid "User contacts"
+msgstr ""
+
+#: .\autopurchases\admin.py:67
+msgid "Shop managers"
+msgstr ""
+
+#: .\autopurchases\admin.py:75
+msgid "Product parameters"
+msgstr ""
+
+#: .\autopurchases\admin.py:80
+msgid "shop manager"
+msgstr ""
+
+#: .\autopurchases\admin.py:111
+msgid "Email, first or last name"
+msgstr ""
+
+#: .\autopurchases\admin.py:117 .\autopurchases\admin.py:127
+msgid "Credentials"
+msgstr ""
+
+#: .\autopurchases\admin.py:118 .\autopurchases\admin.py:134
+msgid "Personal info"
+msgstr ""
+
+#: .\autopurchases\admin.py:120
+msgid "Permissions"
+msgstr ""
+
+#: .\autopurchases\admin.py:123
+msgid "Activity history"
+msgstr ""
+
+#: .\autopurchases\admin.py:139
+msgid "Shops manager"
+msgstr ""
+
+#: .\autopurchases\admin.py:163
+msgid "City, street, house or apartment"
+msgstr ""
+
+#: .\autopurchases\admin.py:168
+msgid "Address"
+msgstr ""
+
+#: .\autopurchases\admin.py:169 .\autopurchases\models.py:71
+#: .\autopurchases\models.py:87 .\autopurchases\models.py:121
+msgid "User"
+msgstr ""
+
+#: .\autopurchases\admin.py:181
+msgid "User email"
+msgstr ""
+
+#: .\autopurchases\admin.py:188
+msgid "Refresh selected Password reset tokens"
+msgstr ""
+
+#: .\autopurchases\admin.py:206 .\autopurchases\models.py:58
+msgid "Email address"
+msgstr ""
+
+#: .\autopurchases\admin.py:219 .\autopurchases\admin.py:225
+msgid "Shop name"
+msgstr ""
+
+#: .\autopurchases\admin.py:227
+msgid "Number of managers"
+msgstr ""
+
+#: .\autopurchases\admin.py:245 .\autopurchases\admin.py:265
+msgid "Category name"
+msgstr ""
+
+#: .\autopurchases\admin.py:255
+msgid "Parameter name"
+msgstr ""
+
+#: .\autopurchases\admin.py:287
+msgid "Shop, product or product category name"
+msgstr ""
+
+#: .\autopurchases\admin.py:308 .\autopurchases\admin.py:347
+msgid "Customer email, shop, product or product category name"
+msgstr ""
+
+#: .\autopurchases\auth.py:12
+msgid "Invalid token."
+msgstr ""
+
+#: .\autopurchases\auth.py:15
+msgid "User inactive or deleted."
+msgstr ""
+
+#: .\autopurchases\models.py:61
+msgid "Required. 150 characters or fewer."
+msgstr ""
+
+#: .\autopurchases\models.py:64
+msgid "Phone number"
+msgstr ""
+
+#: .\autopurchases\models.py:72
+msgid "Users"
+msgstr ""
+
+#: .\autopurchases\models.py:91
+msgid "Optional. Link to the user who uses the specified address."
+msgstr ""
+
+#: .\autopurchases\models.py:94
+msgid "City"
+msgstr ""
+
+#: .\autopurchases\models.py:95
+msgid "Street"
+msgstr ""
+
+#: .\autopurchases\models.py:96
+msgid "House"
+msgstr ""
+
+#: .\autopurchases\models.py:98
+msgid "Apartment"
+msgstr ""
+
+#: .\autopurchases\models.py:105
+msgid "Contact"
+msgstr ""
+
+#: .\autopurchases\models.py:106
+msgid "Contacts"
+msgstr ""
+
+#: .\autopurchases\models.py:125 .\autopurchases\models.py:133
+msgid "Password reset token"
+msgstr ""
+
+#: .\autopurchases\models.py:127 .\autopurchases\models.py:149
+#: .\autopurchases\models.py:416
+msgid "Created"
+msgstr ""
+
+#: .\autopurchases\models.py:134
+msgid "Password reset tokens"
+msgstr ""
+
+#: .\autopurchases\models.py:144 .\autopurchases\models.py:200
+#: .\autopurchases\models.py:228 .\autopurchases\models.py:255
+msgid "Name"
+msgstr ""
+
+#: .\autopurchases\models.py:147 .\autopurchases\models.py:203
+#: .\autopurchases\models.py:225 .\autopurchases\models.py:258
+msgid "Required. 50 characters or fewer."
+msgstr ""
+
+#: .\autopurchases\models.py:150 .\autopurchases\models.py:417
+msgid "Updated"
+msgstr ""
+
+#: .\autopurchases\models.py:152
+msgid "Slug"
+msgstr ""
+
+#: .\autopurchases\models.py:156
+msgid ""
+"This field is automatically populated based on the name. It is used to "
+"create human-readable URLs."
+msgstr ""
+
+#: .\autopurchases\models.py:164
+msgid "Managers"
+msgstr ""
+
+#: .\autopurchases\models.py:168 .\autopurchases\models.py:190
+#: .\autopurchases\models.py:315
+msgid "Shop"
+msgstr ""
+
+#: .\autopurchases\models.py:169 .\autopurchases\models.py:234
+msgid "Shops"
+msgstr ""
+
+#: .\autopurchases\models.py:184
+msgid "Manager"
+msgstr ""
+
+#: .\autopurchases\models.py:193
+msgid "Owner"
+msgstr ""
+
+#: .\autopurchases\models.py:210 .\autopurchases\models.py:220
+msgid "Category"
+msgstr ""
+
+#: .\autopurchases\models.py:211
+msgid "Categories"
+msgstr ""
+
+#: .\autopurchases\models.py:223
+msgid "Model"
+msgstr ""
+
+#: .\autopurchases\models.py:231
+msgid "Required. 100 characters or fewer."
+msgstr ""
+
+#: .\autopurchases\models.py:240 .\autopurchases\models.py:263
+#: .\autopurchases\models.py:286
+msgid "Parameters"
+msgstr ""
+
+#: .\autopurchases\models.py:244 .\autopurchases\models.py:273
+#: .\autopurchases\models.py:320 .\autopurchases\models.py:359
+msgid "Product"
+msgstr ""
+
+#: .\autopurchases\models.py:245
+msgid "Products"
+msgstr ""
+
+#: .\autopurchases\models.py:262 .\autopurchases\models.py:279
+#: .\autopurchases\models.py:285
+msgid "Parameter"
+msgstr ""
+
+#: .\autopurchases\models.py:282
+msgid "Value"
+msgstr ""
+
+#: .\autopurchases\models.py:323 .\autopurchases\models.py:361
+msgid "Quantity"
+msgstr ""
+
+#: .\autopurchases\models.py:324
+msgid "Quantity of the product in stock."
+msgstr ""
+
+#: .\autopurchases\models.py:327
+msgid "Price"
+msgstr ""
+
+#: .\autopurchases\models.py:328
+msgid "Price of the product in minimum monetary units."
+msgstr ""
+
+#: .\autopurchases\models.py:331
+msgid "Available for order"
+msgstr ""
+
+#: .\autopurchases\models.py:334
+msgid ""
+"Check this if the product is available for order. If unchecked, the product "
+"will not be displayed on the website."
+msgstr ""
+
+#: .\autopurchases\models.py:340 .\autopurchases\models.py:341
+msgid "Products in stock"
+msgstr ""
+
+#: .\autopurchases\models.py:354
+msgid "Customer"
+msgstr ""
+
+#: .\autopurchases\models.py:362
+msgid "Total price"
+msgstr ""
+
+#: .\autopurchases\models.py:392 .\autopurchases\models.py:393
+msgid "Products in cart"
+msgstr ""
+
+#: .\autopurchases\models.py:411
+msgid "Delivery address"
+msgstr ""
+
+#: .\autopurchases\models.py:414
+msgid "Order status"
+msgstr ""
+
+#: .\autopurchases\models.py:420
+msgid "Order"
+msgstr ""
+
+#: .\autopurchases\models.py:421
+msgid "Orders"
+msgstr ""
+
+#: .\autopurchases\serializers.py:227
+msgid "Email"
+msgstr ""
+
+#: .\autopurchases\serializers.py:229
+msgid "Password"
+msgstr ""
+
+#: .\autopurchases\serializers.py:234
+msgid "Token"
+msgstr ""
+
+#: .\autopurchases\serializers.py:244
+msgid "Unable to log in with provided credentials."
+msgstr ""
+
+#: .\autopurchases\serializers.py:248
+msgid "Must include \"email\" and \"password\"."
+msgstr ""

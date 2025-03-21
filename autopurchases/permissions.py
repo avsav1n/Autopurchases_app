@@ -1,7 +1,8 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.request import Request
 
-from autopurchases.models import Contact, Order, Shop, User
+from autopurchases.models import Order, Shop
+from autopurchases.models import User
 
 
 class IsMeOrAdmin(BasePermission):
@@ -12,7 +13,7 @@ class IsMeOrAdmin(BasePermission):
 
 
 class IsManagerOrAdmin(BasePermission):
-    message = "Only shop administrators can make changes"
+    message = "Only shop managers can make changes"
 
     def has_object_permission(self, request: Request, view, obj: Shop):
         return request.user.is_staff or request.user in obj.managers.all()
@@ -31,10 +32,3 @@ class IsCartOwnerOrAdmin(BasePermission):
 
     def has_object_permission(self, request: Request, view, obj: Order):
         return request.user.is_staff or obj.customer == request.user
-
-
-class IsAdminOrReadOnly(BasePermission):
-    message = "Only admins can make changes"
-
-    def has_permission(self, request: Request, view):
-        return request.user.is_staff or request.method in SAFE_METHODS

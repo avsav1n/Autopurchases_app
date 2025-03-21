@@ -1,16 +1,16 @@
 import logging
 
 from celery import shared_task
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import QuerySet
-from rest_framework.request import Request
 
 from autopurchases.models import Product, Shop, User
 from autopurchases.serializers import ProductSerializer, ShopSerializer
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
 @shared_task(bind=True)
@@ -28,7 +28,7 @@ def import_shop(self, data: dict[str, str | list[dict]], user_id: int):
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
 
     with transaction.atomic():
-        user: User = User.objects.get(pk=user_id)
+        user: User = UserModel.objects.get(pk=user_id)
         shop_info: str = data["shop"]
         shop_ser = ShopSerializer(data=shop_info, context={"owner": user})
         shop_ser.is_valid(raise_exception=True)
