@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from django.conf import settings
@@ -32,8 +32,8 @@ class UserManager(BaseUserManager):
 
     def _create_user(self, email: str, password: str, **extra_fields):
         if not email:
-            raise ValueError("The given email must be set")
-        email = self.normalize_email(email)
+            raise ValueError(_("The given email must be set"))
+        email = email.lower()
         user: User = self.model(email=email, **extra_fields)
         user.password = make_password(password)
         user.save(using=self._db)
@@ -48,9 +48,9 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
+            raise ValueError(_("Superuser must have is_staff=True."))
         if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
+            raise ValueError(_("Superuser must have is_superuser=True."))
         return self._create_user(email, password, **extra_fields)
 
 
@@ -80,6 +80,8 @@ class User(AbstractUser):
         blank=True,
         null=True,
     )
+    first_name = models.CharField(_("first name"), max_length=150, blank=True, null=True)
+    last_name = models.CharField(_("last name"), max_length=150, blank=True, null=True)
 
     class Meta:
         verbose_name = _("User")
@@ -95,7 +97,7 @@ class User(AbstractUser):
 
 
 class Contact(models.Model):
-    """Модель таблицы контактов (адресов доставки)."""
+    """Модель таблицы контактов (адресов)."""
 
     user: User = models.ForeignKey(
         to="User",
@@ -162,8 +164,8 @@ class Shop(models.Model):
         unique=True,
         help_text=_("Required. 50 characters or fewer."),
     )
-    created_at: date = models.DateField(verbose_name=_("Created"), auto_now_add=True)
-    updated_at: date = models.DateField(verbose_name=_("Updated"), auto_now=True)
+    created_at: datetime = models.DateTimeField(verbose_name=_("Created"), auto_now_add=True)
+    updated_at: datetime = models.DateTimeField(verbose_name=_("Updated"), auto_now=True)
     slug: str = models.SlugField(
         verbose_name=_("Slug"),
         unique=True,
@@ -196,7 +198,8 @@ class Shop(models.Model):
 class ShopsManagers(models.Model):
     """Модель ассоциативной таблицы (m2m отношения) таблиц магазинов и пользователей.
 
-    Содержит дополнительную информацию о роли пользователя в отношении магазина.
+    Дополнительные поля:
+    - информация о роли пользователя у магазина.
     """
 
     manager: User = models.ForeignKey(
@@ -290,7 +293,8 @@ class Parameter(models.Model):
 class ProductsParameters(models.Model):
     """Модель ассоциативной таблицы (m2m отношения) таблиц товаров и параметров.
 
-    Содержит дополнительную информацию о значениях параметров в отношении товаров.
+    Дополнительные поля:
+    - информация о значениях параметров у товара.
     """
 
     product: Product = models.ForeignKey(
@@ -338,7 +342,10 @@ class StockManager(models.Manager):
 class Stock(models.Model):
     """Модель ассоциативной таблицы (m2m отношения) таблиц товаров и магазинов.
 
-    Содержит дополнительную информацию о количестве и стоимости товара в отношении магазина.
+    Дополнительные поля:
+    - информация о количестве товара у магазина;
+    - информация о стоимости товара у магазина;
+    - информация о возможности заказать товар у магазина.
     """
 
     objects: models.Manager = StockManager()
@@ -432,8 +439,9 @@ class CartManager(models.Manager):
 class Cart(BaseOrder):
     """Модель ассоциативной таблицы (m2m отношения) таблиц товаров, магазинов и пользователей.
 
-    Содержит дополнительную информацию о количестве и итоговой стоимости товаров в
-        корзине пользователя.
+    Дополнительные поля:
+    - информация о количестве товара в корзине у пользователя;
+    - информация об итоговой стоимости товаров в корзине у пользователя.
     """
 
     objects = CartManager()
@@ -458,8 +466,12 @@ class OrderManager(CartManager):
 class Order(BaseOrder):
     """Модель ассоциативной таблицы (m2m отношения) таблиц товаров, магазинов и пользователей.
 
-    Содержит дополнительную информацию о количестве, итоговой стоимости товаров, статусе и ключевых
-        датах созданного заказа пользователя.
+
+    Дополнительные поля:
+    - информация об адресе доставки заказа;
+    - информация о статусе заказа;
+    - информация о дате создания заказа;
+    - информация о дате обновления заказа.
     """
 
     objects = OrderManager()

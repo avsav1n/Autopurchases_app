@@ -12,6 +12,15 @@ from autopurchases.tasks import send_email
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def new_user_registered(sender: User, instance: User, created: bool = False, **kwargs):
+    """Сигнальная функция.
+
+    Триггер:
+    - создание нового пользователя (модель User) в приложении.
+
+    Действия:
+    - создание токена авторизации для нового пользователя;
+    - асинхронная отправка привественного письма на email нового пользователя.
+    """
     if created:
         Token.objects.create(user=instance)
         subject = "Welcome to the AutopurchasesDjangoApp!"
@@ -27,6 +36,14 @@ def new_user_registered(sender: User, instance: User, created: bool = False, **k
 
 @receiver(post_save, sender=PasswordResetToken)
 def reset_token_created(sender: PasswordResetToken, instance: PasswordResetToken, **kwargs):
+    """Сигнальная функция.
+
+    Триггер:
+    - создание/обновление токена сброса пароля (модель PasswordResetToken).
+
+    Действия:
+    - асинхронная отправка запрошенного токена сброса пароля на email пользователя.
+    """
     subject = "Password reset token."
     user: User = instance.user
     body = (
@@ -43,6 +60,14 @@ def reset_token_created(sender: PasswordResetToken, instance: PasswordResetToken
 
 @receiver(post_save, sender=Order)
 def new_order_created(sender: Order, instance: Order, created: bool = False, **kwargs):
+    """Сигнальная функция.
+
+    Триггер:
+    - создание нового заказа (модель Order).
+
+    Действия:
+    - асинхронная отправка уведомлений о новом заказе на email заказчика и менеджерам магазина.
+    """
     if created:
         subject = "New order created!"
         order: Order = (
@@ -96,6 +121,14 @@ def order_updated(
     created: bool = False,
     **kwargs,
 ):
+    """Сигнальная функция.
+
+    Триггер:
+    - обновление статуса заказа (модель Order).
+
+    Действия:
+    - асинхронная отправка уведомления о смене статуса заказа на email заказчика.
+    """
     if not created and "status" in update_fields:
         subject = "Order status changed."
         order: Order = Order.objects.with_dependencies().get(pk=instance.id)

@@ -1,15 +1,19 @@
 import logging
+from typing import ClassVar
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import QuerySet
+from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.reverse import reverse
+from rest_framework.validators import UniqueValidator
 
 from autopurchases.models import (
     Cart,
@@ -29,60 +33,181 @@ logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class NormalizedEmailField(serializers.EmailField):
+    """Class кастомного EmailField поля сериализатора.
+
+    Изменения:
+    - добавлена автоматическая нормализация (приведение к нижнему регистру) адреса
+        электронной почты.
+    """
+
+    def to_internal_value(self, data: str) -> str:
+        data: str = super().to_internal_value(data)
+        return data.lower()
+
+
+class CustomModelSerializer(serializers.ModelSerializer):
+    """Class кастомного CustomModelSerializer.
+
+    Изменения:
+    - изменена таблица соответствия поля ORM EmailFiels и поля сериализатора NormalizedEmailField.
+    """
+
+    serializer_field_mapping = {**serializers.ModelSerializer.serializer_field_mapping}
+    serializer_field_mapping[models.EmailField] = NormalizedEmailField
+
+
+class ContactSerializer(CustomModelSerializer):
+    """Сериализатор для работы с контактами (адресами).
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "city": str,
+            "street": str,
+            "house": str,
+            "apartment": str  # опционально
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "city": str,
+            "street": str,
+            "house": str,
+            "apartment": str | null
+        }
+
+    Дополнительная валидация:
+    - валидация на уровне объекта:
+        Единовременное количество объектов Contact, связанных с UserModel не может быть
+        больше settings.MAX_CONTACTS_FOR_USER.
+    """
+
     class Meta:
         model = Contact
         fields = ["id", "city", "street", "house", "apartment"]
 
-    def to_internal_value(self, data: dict[str, str | int]):
-        if "apartment" not in data:
-            data["apartment"] = None
-        return super().to_internal_value(data)
+    def validate(self, attrs: dict) -> dict:
+        user: User = self.context["request"].user
+        if user.contacts.count() >= settings.MAX_CONTACTS_FOR_USER:
+            error_msg = format_lazy(
+                _("A user can not have more than {quantity} contacts at a time."),
+                quantity=settings.MAX_CONTACTS_FOR_USER,
+            )
+            logger.warning(error_msg)
+            raise ValidationError(error_msg)
+        return attrs
 
-    def create(self, validated_data: dict):
+    def create(self, validated_data: dict) -> Contact:
         user: User = self.context["request"].user
         contact = Contact.objects.create(user=user, **validated_data)
         return contact
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(CustomModelSerializer):
+    """Сериализатор для работы с пользователями.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "email": str,
+            "password": str,
+            "first_name": str,  # опционально
+            "last_name": str,   # опционально
+            "phone": str        # опционально
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "email": str,
+            "first_name": str | null,
+            "last_name": str | null,
+            "phone": str | null,
+            "contacts": [
+                {
+                    "id": int,
+                    "city": str,
+                    "street": str,
+                    "house": str,
+                    "apartment": str | null
+                },
+                ...
+            ]
+        }
+
+    Дополнительная валидация:
+    - валидация на уровне поля 'password':
+        Проверка сложности пароля в соответствии settings.AUTH_PASSWORD_VALIDATORS.
+        Требования к паролю:
+        - не должен быть похож на email/first_name/last_name;
+        - минимум 8 символов;
+        - не должен быть распространенным;
+        - не должен состоять только из цифр.
+    """
+
     contacts = ContactSerializer(many=True, read_only=True)
 
     class Meta:
         model = UserModel
         fields = ["id", "email", "first_name", "last_name", "password", "phone", "contacts"]
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {"password": {"write_only": True, "validators": [validate_password]}}
 
-    def validate_password(self, value: str):
-        # FIXME
-        # validate_password(value)
-        return value
+    def create(self, validated_data: dict[str, str]) -> User:
+        return self.Meta.model.objects.create_user(**validated_data)
 
-    def create(self, validated_data: dict):
-        validated_data["password"] = make_password(password=validated_data["password"])
-        return super().create(validated_data=validated_data)
-
-    def update(self, instance: User, validated_data: dict):
-        if password := validated_data.get("password"):
-            validated_data["password"] = make_password(password=password)
+    def update(self, instance: User, validated_data: dict[str, str]) -> User:
+        if "password" in validated_data:
+            validated_data["password"] = make_password(password=validated_data["password"])
         return super().update(instance=instance, validated_data=validated_data)
 
 
 class EmailSerializer(serializers.Serializer):
-    email = serializers.EmailField(max_length=254)
+    """Сериализатор для валидации email.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "email": str
+        }
+    """
+
+    email = NormalizedEmailField(max_length=150)
 
 
 class PasswordResetSerializer(serializers.Serializer):
+    """Сериализатор для валидации токена сброса пароля и пароля для замены.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "rtoken": str,
+            "password": str
+        }
+    """
+
     rtoken = serializers.UUIDField()
-    password = serializers.CharField(max_length=128)
-
-    def validate_password(self, value: str):
-        # FIXME
-        # validate_password(value)
-        return value
+    password = serializers.CharField(
+        write_only=True, max_length=128, validators=[validate_password]
+    )
 
 
-class ShopSerializer(serializers.ModelSerializer):
+class ShopSerializer(CustomModelSerializer):
+    """Сериализатор для работы с магазинами.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "name": str,
+            "managers": list[int]  # опционально
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "name": str,
+            "created_at": str,
+            "updated_at": str,
+            "managers": list[int]
+        }
+    """
+
     managers = serializers.PrimaryKeyRelatedField(
         many=True, queryset=UserModel.objects.all(), required=False
     )
@@ -92,12 +217,26 @@ class ShopSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "created_at", "updated_at", "managers"]
 
     def to_internal_value(self, data: dict | str):
+        """Метод преобразования входных данных для десериализации.
+
+        Поддерживает следующие форматы входных данных:
+        - str (только для программного использования)
+            Пример десериализации:
+                shop_ser = ShopSerializer(data="example_shop_name")
+                shop_ser.is_valid(raise_exception=True)
+                ...
+        - dict (для API)
+            Пример десериализации:
+                shop_ser = ShopSerializer(data={"name": "example_shop_name"})
+                shop_ser.is_valid(raise_exception=True)
+                ...
+        """
         if isinstance(data, str):
             data = {"name": data}
         return super().to_internal_value(data)
 
     @transaction.atomic
-    def create(self, validated_data: dict):
+    def create(self, validated_data: dict[str, str | list[int]]) -> Shop:
         managers: list["User"] | None = validated_data.pop("managers", None)
         shop: Shop = super().create(validated_data=validated_data)
         owner: User = (
@@ -113,10 +252,9 @@ class ShopSerializer(serializers.ModelSerializer):
             all_managers = []
         all_managers.append(ShopsManagers(shop=shop, manager=owner, is_owner=True))
         ShopsManagers.objects.bulk_create(all_managers)
-
         return shop
 
-    def update(self, instance: Shop, validated_data: dict):
+    def update(self, instance: Shop, validated_data: dict[str, str | list[int]]) -> Shop:
         if "managers" in validated_data:
             for manager in instance.managers_roles.select_related("manager").all():
                 if manager.is_owner:
@@ -125,28 +263,92 @@ class ShopSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategorySerializer(CustomModelSerializer):
+    """Сериализатор для работы с категориями товаров.
+
+    Только для программного использования в качестве вложенного.
+    """
+
     class Meta:
         model = Category
         fields = ["id", "name"]
         extra_kwargs = {"name": {"validators": []}}
 
     def to_internal_value(self, data: dict | str):
+        """Метод преобразования входных данных для десериализации.
+
+        Поддерживает следующие форматы входных данных:
+        - str
+            Пример десериализации:
+                category_ser = CategorySerializer(data="smartphones")
+                category_ser.is_valid(raise_exception=True)
+                ...
+        - dict
+            Пример десериализации:
+                category_ser = CategorySerializer(data={"name": "smartphones"})
+                category_ser.is_valid(raise_exception=True)
+                ...
+        """
         if isinstance(data, str):
-            data = {"name": data.capitalize()}
+            data = {"name": data}
         return super().to_internal_value(data)
 
-    def to_representation(self, instance: Category):
+    def to_representation(self, instance: Category) -> str:
+        """Метод возврата сериализованных данных.
+
+        Изменения:
+            Формат выходных данных по умолчанию:
+                {
+                    "id": int,
+                    "name": str
+                }
+            Измененный формат:
+                str
+        """
         return instance.name
 
 
 class ParameterListSerializer(serializers.ListSerializer):
+    """Сериализатор списка ParameterSerializer."""
+
     def to_internal_value(self, data: dict[str, str | int]):
-        data = [{"name": key, "value": str(value)} for key, value in data.items()]
+        """Метод преобразования входных данных для десериализации.
+
+        Поддерживает следующие форматы входных данных:
+        - dict[str, str | int]
+            Пример десериализации:
+                data = {
+                    "colour": "black",
+                    "size": 120x140,
+                    "weight": 20
+                }
+                parameter_ser = ParameterSerializer(data=data, many=True)
+                parameter_ser.is_valid(raise_exception=True)
+                ...
+        """
+        data = [{"name": key.capitalize(), "value": str(value)} for key, value in data.items()]
         return super().to_internal_value(data)
 
-    def to_representation(self, data):
-        params: list[dict[str, str]] = super().to_representation(data)
+    def to_representation(self, data: list[dict[str, str | int]]) -> dict[str, str]:
+        """Метод возврата сериализованных данных.
+
+        Изменения:
+            Формат выходных данных по умолчанию:
+                [
+                    {
+                        "id": int,
+                        "name": str,
+                        "value": str
+                    },
+                    ...
+                ]
+            Измененный формат:
+                {
+                    "parameter.name": str,
+                    ...
+                }
+        """
+        params: list[dict[str, str | int]] = super().to_representation(data)
 
         repr = {}
         for param in params:
@@ -154,7 +356,12 @@ class ParameterListSerializer(serializers.ListSerializer):
         return repr
 
 
-class ParameterSerializer(serializers.ModelSerializer):
+class ParameterSerializer(CustomModelSerializer):
+    """Сериализатор для работы с параметрами товаров.
+
+    Только для программного использования в качестве вложенного.
+    """
+
     name = serializers.CharField(max_length=50)
 
     class Meta:
@@ -162,12 +369,55 @@ class ParameterSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "value"]
         list_serializer_class = ParameterListSerializer
 
-    def to_representation(self, instance: ProductsParameters):
+    def to_representation(self, instance: ProductsParameters) -> dict[str, str]:
+        """Метод возврата сериализованных данных.
+
+        Изменения:
+            Формат выходных данных по умолчанию:
+                {
+                    "id": int,
+                    "name": str,
+                    "value": str
+                }
+            Измененный формат:
+                {
+                    "parameter.name": str
+                }
+        """
         repr = {instance.parameter.name: instance.value}
         return repr
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(CustomModelSerializer):
+    """Сериализатор для работы с товарами.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "category": str,
+            "model": str,
+            "name": str,
+            "price": int,
+            "quantity": int,
+            "parameters": {
+                parameter.name: str,
+                ...
+            }
+            "can_buy": bool,  # опционально
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "category": str,
+            "model": str,
+            "name": str,
+            "parameters": {
+                parameter.name: str,
+                ...
+            }
+        }
+    """
+
     category = CategorySerializer()
     parameters = ParameterSerializer(source="parameters_values", many=True)
     price = serializers.IntegerField(write_only=True)
@@ -178,17 +428,6 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ["id", "category", "model", "name", "price", "quantity", "parameters", "can_buy"]
         extra_kwargs = {"name": {"validators": []}}
-
-    def to_representation(self, instance: Product):
-        repr: dict[str, str | dict] = super().to_representation(instance=instance)
-
-        if shop := self.context.get("shop"):
-            stock = Stock.objects.get(product=instance, shop=shop)
-            repr["price"] = stock.price
-            repr["quantity"] = stock.quantity
-            repr["can_buy"] = stock.can_buy
-
-        return repr
 
     @transaction.atomic
     def create(self, validated_data: dict):
@@ -222,9 +461,21 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class EmailAuthTokenSerializer(serializers.Serializer):
-    """Сериализатор аутентификации по email и password."""
+    """Сериализатор для работы с токенами аутентификации.
 
-    email = serializers.CharField(label=_("Email"), write_only=True)
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "email": str,
+            "password": str
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "token": str
+        }
+    """
+
+    email = NormalizedEmailField(label=_("Email"), write_only=True)
     password = serializers.CharField(
         label=_("Password"),
         style={"input_type": "password"},
@@ -233,7 +484,7 @@ class EmailAuthTokenSerializer(serializers.Serializer):
     )
     token = serializers.CharField(label=_("Token"), read_only=True)
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict[str, str]) -> dict[str, str]:
         email = attrs.get("email")
         password = attrs.get("password")
 
@@ -253,7 +504,26 @@ class EmailAuthTokenSerializer(serializers.Serializer):
         return attrs
 
 
-class StockSerializer(serializers.ModelSerializer):
+class StockSerializer(CustomModelSerializer):
+    """Сериализатор для работы со складами - ассоциативной таблицей товаров и магазинов.
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "shop": str,
+            "quantity": int,
+            "price": int,
+            "can_buy": bool,
+            "category": str,
+            "model": str,
+            "name": str,
+            "parameters": {
+                "parameter.name": str,
+                ...
+            }
+        }
+    """
+
     shop = ShopSerializer(read_only=True)
     product = ProductSerializer(read_only=True)
 
@@ -262,6 +532,49 @@ class StockSerializer(serializers.ModelSerializer):
         fields = ["id", "shop", "product", "quantity", "price", "can_buy"]
 
     def to_representation(self, instance: Stock):
+        """Метод возврата сериализованных данных.
+
+        Изменения:
+            Формат выходных данных по умолчанию:
+                {
+                    "id": int,
+                    "shop": {
+                        "id": int,
+                        "name": str,
+                        "created_at": str,
+                        "updated_at": str,
+                        "managers": list[int]
+                    }
+                    "quantity": int,
+                    "price": int,
+                    "can_buy": bool,
+                    'product': {
+                        "id": int,
+                        "category": str,
+                        "model": str,
+                        "name": str,
+                        "parameters": {
+                            parameter.name: str,
+                            ...
+                        }
+                    }
+
+            Измененный формат:
+                {
+                    "id": int,
+                    "shop": str,
+                    "quantity": int,
+                    "price": int,
+                    "can_buy": bool,
+                    "category": str,
+                    "model": str,
+                    "name": str,
+                    "parameters": {
+                        "parameter.name": str,
+                        ...
+                    }
+                }
+        """
         repr: dict[str, int | dict] = super().to_representation(instance)
 
         repr["shop"] = repr["shop"]["name"]
@@ -275,7 +588,35 @@ class StockSerializer(serializers.ModelSerializer):
         return repr
 
 
-class CartSerialaizer(serializers.ModelSerializer):
+class CartSerializer(CustomModelSerializer):
+    """Сериализатор для работы с корзиной пользователя.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "product": int,
+            "quantity": int
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "customer": str,
+            "quantity": int,
+            "total_price": int,
+            "shop": str,
+            "category": str,
+            "model": str,
+            "name": str
+        }
+
+    Дополнительная валидация:
+    - валидация на уровне объекта:
+        Товар, добавляемый в корзину, доступен для заказа.
+    - валидация на уровне объекта:
+        Количество товаров, добавляемое в корзину, не может быть больше чем количество товаров
+        на складе.
+    """
+
     customer_read = UserSerializer(source="customer", read_only=True)
     product_read = StockSerializer(source="product", read_only=True)
 
@@ -303,6 +644,64 @@ class CartSerialaizer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def to_representation(self, instance: Cart):
+        """Метод возврата сериализованных данных.
+
+        Изменения:
+            Формат выходных данных по умолчанию:
+                {
+                    "id": int,
+                    "customer": int,
+                    "product": int,
+                    "quantity": int,
+                    "total_price": int,
+                    "customer_read": {
+                        "id": int,
+                        "email": str,
+                        "first_name": str | null,
+                        "last_name": str | null,
+                        "phone": str | null,
+                        "contacts": [
+                            {
+                                "id": int,
+                                "city": str,
+                                "street": str,
+                                "house": str,
+                                "apartment": str | null
+                            },
+                            ...
+                        ]
+                    },
+                    "product_read": {
+                        "id": int,
+                        "shop": str,
+                        "quantity": int,
+                        "price": int,
+                        "can_buy": bool,
+                        "category": str,
+                        "model": str,
+                        "name": str,
+                        "parameters": {
+                            "parameter.name": str,
+                            ...
+                        }
+                    }
+
+            Измененный формат:
+                {
+                    "id": int,
+                    "shop": str,
+                    "quantity": int,
+                    "price": int,
+                    "can_buy": bool,
+                    "category": str,
+                    "model": str,
+                    "name": str,
+                    "parameters": {
+                        "parameter.name": str,
+                        ...
+                    }
+                }
+        """
         repr: dict[str, int | dict] = super().to_representation(instance)
 
         customer_info: dict = repr.pop("customer_read")
@@ -336,7 +735,7 @@ class OrderListSerializer(serializers.ListSerializer):
             with transaction.atomic():
                 stock.quantity -= product.quantity
                 stock.save(update_fields=["quantity"])
-                order = Order.objects.create(
+                order = self.child.Meta.model.objects.create(
                     customer=product.customer,
                     product=product.product,
                     quantity=product.quantity,
@@ -348,7 +747,49 @@ class OrderListSerializer(serializers.ListSerializer):
         return created_orders
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(CustomModelSerializer):
+    """Сериализатор для работы с заказами.
+
+    Пример принимаемых данных для десериализации (в формате JSON):
+        {
+            "delivery_address": {
+                "city": str,
+                "street": str,
+                "house": str,
+                "apartment": str  # опционально
+            },
+            "status" : str
+        }
+
+    Пример сериализованных данных (в формате JSON):
+        {
+            "id": int,
+            "customer": str,
+            "quantity": int,
+            "total_price": int,
+            "delivery_address": {
+                "city": str,
+                "street": str,
+                "house": str,
+                "apartment": str | null
+                },
+            "status": str,
+            "created_at": str,
+            "updated_at": str,
+            "shop": str,
+            "category": str,
+            "model": str,
+            "name": str
+        }
+
+    Дополнительная валидация:
+    - валидация на уровне поля 'delivery_address':
+        Адрес доставки можно передать только при создании (POST) заказа, его обновление (PATCH)
+        недоступно.
+    - валидация на уровне поля 'status':
+        Пользователь не может сменить (PATCH) статус заказа, эта опция доступна только магазинам.
+    """
+
     customer = UserSerializer(read_only=True)
     product = StockSerializer(read_only=True)
     delivery_address = ContactSerializer()
@@ -370,8 +811,74 @@ class OrderSerializer(serializers.ModelSerializer):
         list_serializer_class = OrderListSerializer
 
     def to_representation(self, instance: Order):
-        repr: dict[str, int | dict] = super().to_representation(instance)
+        """Метод возврата сериализованных данных.
 
+        Изменения:
+            Формат выходных данных по умолчанию:
+                {
+                    "id": int,
+                    "customer": {
+                        "id": int,
+                        "email": str,
+                        "first_name": str | null,
+                        "last_name": str | null,
+                        "phone": str | null,
+                        "contacts": [
+                            {
+                                "id": int,
+                                "city": str,
+                                "street": str,
+                                "house": str,
+                                "apartment": str | null
+                            },
+                            ...
+                        ]
+                    },
+                    "product": {
+                        "id": int,
+                        "shop": str,
+                        "quantity": int,
+                        "price": int,
+                        "can_buy": bool,
+                        "category": str,
+                        "model": str,
+                        "name": str,
+                        "parameters": {
+                            "parameter.name": str,
+                            ...
+                        }
+                    }
+                    "quantity": int,
+                    "total_price": int,
+                    "delivery_address": {
+                        "city": str,
+                        "street": str,
+                        "house": str,
+                        "apartment": str  # опционально
+                    },
+                    "status": str,
+                    "created_at": str,
+                    "updated_at": str
+                }
+
+            Измененный формат:
+                {
+                    "id": int,
+                    "shop": str,
+                    "quantity": int,
+                    "price": int,
+                    "can_buy": bool,
+                    "category": str,
+                    "model": str,
+                    "name": str,
+                    "parameters": {
+                        "parameter.name": str,
+                        ...
+                    }
+                }
+        """
+        repr: dict[str, int | dict] = super().to_representation(instance)
+        print("123")
         repr["customer"] = repr["customer"]["email"]
 
         product_info: dict = repr.pop("product")
@@ -399,7 +906,7 @@ class OrderSerializer(serializers.ModelSerializer):
             raise ValidationError(error_msg)
         return value
 
-    def update(self, instance: Order, validated_data: dict) -> Order:
+    def update(self, instance: Order, validated_data: dict[str, str]) -> Order:
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save(update_fields=validated_data.keys())

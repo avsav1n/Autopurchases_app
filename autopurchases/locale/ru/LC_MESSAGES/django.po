@@ -403,6 +403,10 @@ msgstr "Товар не найден"
 msgid "Cart is empty"
 msgstr "Корзина пуста"
 
+#: .\autopurchases\serializers.py:48
+msgid "A user can not have more than {quantity} contacts at a time."
+msgstr "Единовременно у пользователя не может быть более {quantity} контактов."
+
 msgid "Autopurchases: products and shops info"
 msgstr "Автозакупки: информация о товарах и магазинах"
 

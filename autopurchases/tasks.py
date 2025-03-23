@@ -6,15 +6,21 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import QuerySet
 
-from autopurchases.models import Product, Shop, User
-from autopurchases.serializers import ProductSerializer, ShopSerializer
+from autopurchases.models import Product, Shop, Stock, User
+from autopurchases.serializers import ProductSerializer, ShopSerializer, StockSerializer
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
 
 @shared_task(bind=True)
-def send_email(self, subject: str, body: str, to: list[str]):
+def send_email(self, subject: str, body: str, to: list[str]) -> None:
+    """Задача Celery, выполняющая асинхронную отправку письма по электронной почте.
+
+    :param str subject: тема
+    :param str body: содержание
+    :param list[str] to: список email получателей
+    """
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
 
     email = EmailMessage(subject=subject, body=body, to=to)
@@ -24,7 +30,13 @@ def send_email(self, subject: str, body: str, to: list[str]):
 
 
 @shared_task(bind=True)
-def import_shop(self, data: dict[str, str | list[dict]], user_id: int):
+def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
+    """Задача Celery, выполняющая асинхронную загрузку информации о магазине в базу данных.
+
+    :param dict[str, str | list[dict]] data: информация о магазине
+    :param int user_id: идентификатор пользователя (данный пользователь будет помечен как владелец
+        магазина)
+    """
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
 
     with transaction.atomic():
@@ -45,15 +57,23 @@ def import_shop(self, data: dict[str, str | list[dict]], user_id: int):
 
 
 @shared_task(bind=True)
-def export_shop(self, shop_id: int):
+def export_shop(self, shop_id: int) -> dict[str, str | list[dict]]:
+    """Задача Celery, выполняющая асинхронную выгрузку информации о магазине из базы данных.
+
+    :param int shop_id: идентификатор магазина
+    :return dict[str, str | list[dict]]: информация о магазине
+    """
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
 
     shop: Shop = Shop.objects.get(pk=shop_id)
-    products: QuerySet[Product] = shop.products.all()
-    shop_ser = ShopSerializer(shop)
-    products_ser = ProductSerializer(products, many=True)
-    result = {"shop": shop_ser.data["name"], "products": products_ser.data}
+    stock: Stock = Stock.objects.with_dependencies().filter(shop_id=shop_id).all()
+    stock_ser = StockSerializer(stock, many=True)
+    stock_data = [
+        {key: value for key, value in product.items() if key != "shop"}
+        for product in stock_ser.data
+    ]
 
+    result = {"shop": shop.name, "products": stock_data}
     logger.info("Shop '%s' export finished", shop.name)
 
     return result

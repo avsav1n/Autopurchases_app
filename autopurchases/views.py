@@ -51,7 +51,7 @@ from autopurchases.permissions import (
     IsMeOrAdmin,
 )
 from autopurchases.serializers import (
-    CartSerialaizer,
+    CartSerializer,
     ContactSerializer,
     EmailAuthTokenSerializer,
     EmailSerializer,
@@ -100,7 +100,7 @@ class UserViewSet(ModelViewSet):
     - PATCH: Изменение профиля пользователя.
     - DELETE: Удаление профиля пользователя.
     - POST /<int:user.id>/contacts/: Создание и добавление информации о контакте пользователя
-        (адреса доставки). Для этого необходимо передать название города (str), улицы (str),
+        (адреса). Для этого необходимо передать название города (str), улицы (str),
         номер дома (int).
         Пример тела запроса (в формате JSON):
             {
@@ -110,7 +110,7 @@ class UserViewSet(ModelViewSet):
                 "apartment": int  # опционально
             }
     - DELETE /<int:user.id>/contacts/<int:contact.id>/: Удаление выбранного контакта пользователя
-        (адреса доставки).
+        (адреса).
     - GET /reset/: Создание и получение токена сброса пароля. Для этого необходимо передать
         email (str) зарегистрированного пользователя.
         Пример тела запроса (в формате JSON):
@@ -137,6 +137,7 @@ class UserViewSet(ModelViewSet):
         contact_ser.is_valid(raise_exception=True)
         contact_ser.save()
 
+        user.refresh_from_db(fields=["contacts"])
         user_ser = UserSerializer(user)
         return Response(user_ser.data, status=status.HTTP_201_CREATED)
 
@@ -148,13 +149,14 @@ class UserViewSet(ModelViewSet):
     )
     def delete_contact(self, request: Request, pk: int, contact_pk: str) -> Response:
         user: User = self.get_object()
-        contact: Contact | None = UserModel.contacts.filter(pk=int(contact_pk)).first()
+        contact: Contact | None = Contact.objects.filter(user=user, pk=int(contact_pk)).first()
         if contact is None:
             error_msg = _("Contact not found")
             logger.error(error_msg)
             raise BadRequest(error_msg)
         contact.delete()
 
+        user.refresh_from_db(fields=["contacts"])
         user_ser = UserSerializer(user)
         return Response(user_ser.data, status=status.HTTP_200_OK)
 
@@ -305,7 +307,7 @@ class ShopViewSet(ModelViewSet):
         url_name="update-order",
         permission_classes=[IsManagerOrAdmin],
     )
-    def update_shop_orders(self, request: Request, slug: str, order_pk: str) -> Response:
+    def update_shop_order_status(self, request: Request, slug: str, order_pk: str) -> Response:
         shop: Shop = self.get_object()
         order: Order | None = (
             Order.objects.with_dependencies().filter(product__shop=shop, pk=int(order_pk)).first()
@@ -456,7 +458,7 @@ class CartViewSet(UserFilterMixin, ModelViewSet):
             }
     """
 
-    serializer_class = CartSerialaizer
+    serializer_class = CartSerializer
     queryset = Cart.objects.with_dependencies().all()
     permission_classes = [IsAuthenticated, IsCartOwnerOrAdmin]
 

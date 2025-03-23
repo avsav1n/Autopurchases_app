@@ -8,12 +8,6 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.forms import (
-    AdminUserCreationForm,
-    UserChangeForm,
-    UserCreationForm,
-    UsernameField,
-)
 from django.db import models
 from django.db.models import Case, Count, F, QuerySet, Value, When
 from django.forms import BaseInlineFormSet, ValidationError
@@ -43,6 +37,12 @@ logger = logging.getLogger(__name__)
 
 class ShopManagersFormset(BaseInlineFormSet):
     def clean(self) -> None:
+        """Функция валидации Formset для админ-модели ShopAdmin.
+
+        Изменения:
+        - добавлена валидация владельца магазина: единовременно у магазина может быть
+            только один владелец.
+        """
         main_flag = False
         for form in self.forms:
             if form.cleaned_data.get("DELETE"):
@@ -94,13 +94,6 @@ class IsManagerListFilter(admin.SimpleListFilter):
         return queryset
 
 
-class CustomAdminUserCreationForm(AdminUserCreationForm):
-    class Meta:
-        model = UserModel
-        fields = ("email",)
-        field_classes = {"email": UsernameField}
-
-
 @admin.register(UserModel)
 class CustomUserAdmin(UserAdmin):
     list_display = ("id", "email", "is_staff", "is_manager_display")
@@ -113,7 +106,6 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ("email", "first_name", "last_name")
     search_help_text = _("Email, first or last name")
 
-    add_form = CustomAdminUserCreationForm
     inlines = [UserContactsInline]
 
     fieldsets = (
