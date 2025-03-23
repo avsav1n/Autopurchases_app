@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-21 20:52+0300\n"
+"POT-Creation-Date: 2025-03-23 16:41+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,318 +19,392 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
 "(n%100>=11 && n%100<=14)? 2 : 3);\n"
-#: .\autopurchases\admin.py:50
-msgid "A store can only have one owner."
-msgstr ""
 
-#: .\autopurchases\admin.py:60
+#: .\autopurchases\admin.py:51
+msgid "A shop can only have one owner."
+msgstr "У магазина может быть только один владелец."
+
+#: .\autopurchases\admin.py:61
 msgid "User contacts"
-msgstr ""
+msgstr "Контакты пользователя"
 
-#: .\autopurchases\admin.py:67
+#: .\autopurchases\admin.py:68
 msgid "Shop managers"
-msgstr ""
+msgstr "Управляющие магазина"
 
-#: .\autopurchases\admin.py:75
+#: .\autopurchases\admin.py:76
 msgid "Product parameters"
-msgstr ""
+msgstr "Параметры товара"
 
-#: .\autopurchases\admin.py:80
+#: .\autopurchases\admin.py:81
 msgid "shop manager"
-msgstr ""
+msgstr "управляющий магазина"
 
-#: .\autopurchases\admin.py:111
+#: .\autopurchases\admin.py:114
 msgid "Email, first or last name"
-msgstr ""
+msgstr "Электронная почта, имя или фамилия"
 
-#: .\autopurchases\admin.py:117 .\autopurchases\admin.py:127
+#: .\autopurchases\admin.py:120 .\autopurchases\admin.py:130
 msgid "Credentials"
-msgstr ""
+msgstr "Учетные данные"
 
-#: .\autopurchases\admin.py:118 .\autopurchases\admin.py:134
+#: .\autopurchases\admin.py:121 .\autopurchases\admin.py:137
 msgid "Personal info"
-msgstr ""
+msgstr "Персональная информация"
 
-#: .\autopurchases\admin.py:120
-msgid "Permissions"
-msgstr ""
-
-#: .\autopurchases\admin.py:123
+#: .\autopurchases\admin.py:126
 msgid "Activity history"
-msgstr ""
+msgstr "История активности"
 
-#: .\autopurchases\admin.py:139
-msgid "Shops manager"
-msgstr ""
+#: .\autopurchases\admin.py:142
+msgid "Shop manager"
+msgstr "Управляющий магазина"
 
-#: .\autopurchases\admin.py:163
+#: .\autopurchases\admin.py:166
 msgid "City, street, house or apartment"
-msgstr ""
+msgstr "Город, улица, дом или квартира"
 
-#: .\autopurchases\admin.py:168
+#: .\autopurchases\admin.py:171
 msgid "Address"
-msgstr ""
+msgstr "Адрес"
 
-#: .\autopurchases\admin.py:169 .\autopurchases\models.py:71
+#: .\autopurchases\admin.py:172 .\autopurchases\models.py:71
 #: .\autopurchases\models.py:87 .\autopurchases\models.py:121
 msgid "User"
 msgstr ""
 
-#: .\autopurchases\admin.py:181
+#: .\autopurchases\admin.py:184
 msgid "User email"
-msgstr ""
+msgstr "Электронная почта пользователя"
 
-#: .\autopurchases\admin.py:188
+#: .\autopurchases\admin.py:191
 msgid "Refresh selected Password reset tokens"
-msgstr ""
+msgstr "Обновить выбранные Токены сброса пароля"
 
-#: .\autopurchases\admin.py:206 .\autopurchases\models.py:58
+#: .\autopurchases\admin.py:209 .\autopurchases\models.py:58
 msgid "Email address"
-msgstr ""
+msgstr "Электронная почта"
 
-#: .\autopurchases\admin.py:219 .\autopurchases\admin.py:225
+#: .\autopurchases\admin.py:222
 msgid "Shop name"
-msgstr ""
+msgstr "Название магазина"
 
-#: .\autopurchases\admin.py:227
+#: .\autopurchases\admin.py:228
+msgid "Shop info"
+msgstr "Информация о магазине"
+
+#: .\autopurchases\admin.py:230
 msgid "Number of managers"
-msgstr ""
+msgstr "Количество управляющих"
 
-#: .\autopurchases\admin.py:245 .\autopurchases\admin.py:265
+#: .\autopurchases\admin.py:248 .\autopurchases\admin.py:272
 msgid "Category name"
-msgstr ""
+msgstr "Название категории"
 
-#: .\autopurchases\admin.py:255
+#: .\autopurchases\admin.py:260
 msgid "Parameter name"
-msgstr ""
+msgstr "Название параметра"
 
-#: .\autopurchases\admin.py:287
+#: .\autopurchases\admin.py:296
 msgid "Shop, product or product category name"
-msgstr ""
+msgstr "Название магазина, товара или его категории"
 
-#: .\autopurchases\admin.py:308 .\autopurchases\admin.py:347
+#: .\autopurchases\admin.py:302
+msgid "Stock position info"
+msgstr "Информация о позиции на складе"
+
+#: .\autopurchases\admin.py:324 .\autopurchases\admin.py:375
 msgid "Customer email, shop, product or product category name"
 msgstr ""
+"Электронная почта пользователя, название магазина, товара или его категории"
 
-#: .\autopurchases\auth.py:12
-msgid "Invalid token."
-msgstr ""
+#: .\autopurchases\admin.py:327
+msgid "Cart position info"
+msgstr "Информация о позиции в корзине"
 
-#: .\autopurchases\auth.py:15
-msgid "User inactive or deleted."
-msgstr ""
+#: .\autopurchases\apps.py:8
+msgid "Autopurchases"
+msgstr "Автозакупки"
 
 #: .\autopurchases\models.py:61
 msgid "Required. 150 characters or fewer."
-msgstr ""
+msgstr "Обязательное поле. Не более 150 символов."
 
 #: .\autopurchases\models.py:64
 msgid "Phone number"
-msgstr ""
+msgstr "Номер телефона"
 
 #: .\autopurchases\models.py:72
 msgid "Users"
-msgstr ""
+msgstr "Пользователи"
 
 #: .\autopurchases\models.py:91
 msgid "Optional. Link to the user who uses the specified address."
 msgstr ""
+"Необязательное поле. Ссылка на пользователя который использует данный адрес."
 
 #: .\autopurchases\models.py:94
 msgid "City"
-msgstr ""
+msgstr "Город"
 
 #: .\autopurchases\models.py:95
 msgid "Street"
-msgstr ""
+msgstr "Улица"
 
 #: .\autopurchases\models.py:96
 msgid "House"
-msgstr ""
+msgstr "Дом"
 
 #: .\autopurchases\models.py:98
 msgid "Apartment"
-msgstr ""
+msgstr "Квартира"
 
 #: .\autopurchases\models.py:105
 msgid "Contact"
-msgstr ""
+msgstr "Контакт (адрес)"
 
 #: .\autopurchases\models.py:106
 msgid "Contacts"
-msgstr ""
+msgstr "Контакты (адреса)"
 
 #: .\autopurchases\models.py:125 .\autopurchases\models.py:133
 msgid "Password reset token"
-msgstr ""
+msgstr "Токен сброса пароля"
 
 #: .\autopurchases\models.py:127 .\autopurchases\models.py:149
-#: .\autopurchases\models.py:416
+#: .\autopurchases\models.py:418
 msgid "Created"
-msgstr ""
+msgstr "Создано"
 
 #: .\autopurchases\models.py:134
 msgid "Password reset tokens"
-msgstr ""
+msgstr "Токены сброса пароля"
 
 #: .\autopurchases\models.py:144 .\autopurchases\models.py:200
 #: .\autopurchases\models.py:228 .\autopurchases\models.py:255
 msgid "Name"
-msgstr ""
+msgstr "Название"
 
 #: .\autopurchases\models.py:147 .\autopurchases\models.py:203
 #: .\autopurchases\models.py:225 .\autopurchases\models.py:258
 msgid "Required. 50 characters or fewer."
-msgstr ""
+msgstr "Обязательное поле. Не более 50 символов."
 
-#: .\autopurchases\models.py:150 .\autopurchases\models.py:417
+#: .\autopurchases\models.py:150 .\autopurchases\models.py:419
 msgid "Updated"
-msgstr ""
+msgstr "Обновлено"
 
 #: .\autopurchases\models.py:152
 msgid "Slug"
-msgstr ""
+msgstr "Идентификатор URL"
 
 #: .\autopurchases\models.py:156
 msgid ""
 "This field is automatically populated based on the name. It is used to "
 "create human-readable URLs."
 msgstr ""
+"Это поле автоматически заполняется на основе имени. Оно используется для "
+"создания человеко-читаемых URL-адресов."
 
 #: .\autopurchases\models.py:164
 msgid "Managers"
-msgstr ""
+msgstr "Управляющие"
 
 #: .\autopurchases\models.py:168 .\autopurchases\models.py:190
 #: .\autopurchases\models.py:315
 msgid "Shop"
-msgstr ""
+msgstr "Магазин"
 
 #: .\autopurchases\models.py:169 .\autopurchases\models.py:234
 msgid "Shops"
-msgstr ""
+msgstr "Магазины"
 
 #: .\autopurchases\models.py:184
 msgid "Manager"
-msgstr ""
+msgstr "Управляющий"
 
 #: .\autopurchases\models.py:193
 msgid "Owner"
-msgstr ""
+msgstr "Владелец"
 
 #: .\autopurchases\models.py:210 .\autopurchases\models.py:220
-msgid "Category"
-msgstr ""
+msgid "Products category"
+msgstr "Категория товаров"
 
 #: .\autopurchases\models.py:211
-msgid "Categories"
-msgstr ""
+msgid "Products categories"
+msgstr "Категории товаров"
 
 #: .\autopurchases\models.py:223
 msgid "Model"
-msgstr ""
+msgstr "Модель"
 
 #: .\autopurchases\models.py:231
 msgid "Required. 100 characters or fewer."
-msgstr ""
+msgstr "Обязательное поле. Не более 100 символов."
 
 #: .\autopurchases\models.py:240 .\autopurchases\models.py:263
 #: .\autopurchases\models.py:286
-msgid "Parameters"
-msgstr ""
+msgid "Products parameters"
+msgstr "Параметры товаров"
 
 #: .\autopurchases\models.py:244 .\autopurchases\models.py:273
-#: .\autopurchases\models.py:320 .\autopurchases\models.py:359
+#: .\autopurchases\models.py:321 .\autopurchases\models.py:361
 msgid "Product"
-msgstr ""
+msgstr "Товар"
 
 #: .\autopurchases\models.py:245
 msgid "Products"
-msgstr ""
+msgstr "Товары"
 
 #: .\autopurchases\models.py:262 .\autopurchases\models.py:279
 #: .\autopurchases\models.py:285
-msgid "Parameter"
-msgstr ""
+msgid "Products parameter"
+msgstr "Параметр товаров"
 
 #: .\autopurchases\models.py:282
 msgid "Value"
-msgstr ""
+msgstr "Значение"
 
-#: .\autopurchases\models.py:323 .\autopurchases\models.py:361
+#: .\autopurchases\models.py:316
+msgid "Link to the shop."
+msgstr "Ссылка на магазин."
+
+#: .\autopurchases\models.py:322
+msgid "Link to the product."
+msgstr "Сслыка на товар."
+
+#: .\autopurchases\models.py:325 .\autopurchases\models.py:363
 msgid "Quantity"
-msgstr ""
+msgstr "Количество"
 
-#: .\autopurchases\models.py:324
+#: .\autopurchases\models.py:326
 msgid "Quantity of the product in stock."
-msgstr ""
+msgstr "Количество товаров на складе."
 
-#: .\autopurchases\models.py:327
+#: .\autopurchases\models.py:329
 msgid "Price"
-msgstr ""
+msgstr "Цена"
 
-#: .\autopurchases\models.py:328
+#: .\autopurchases\models.py:330
 msgid "Price of the product in minimum monetary units."
-msgstr ""
+msgstr "Цена товара в минимальных денежных единицах."
 
-#: .\autopurchases\models.py:331
+#: .\autopurchases\models.py:333
 msgid "Available for order"
-msgstr ""
+msgstr "Доступен для заказа"
 
-#: .\autopurchases\models.py:334
+#: .\autopurchases\models.py:336
 msgid ""
 "Check this if the product is available for order. If unchecked, the product "
 "will not be displayed on the website."
 msgstr ""
+"Отметьте, если товар доступен для заказа. Если не выбрано, товар не будет "
+"отображаться на сайте."
 
-#: .\autopurchases\models.py:340 .\autopurchases\models.py:341
+#: .\autopurchases\models.py:342 .\autopurchases\models.py:343
 msgid "Products in stock"
-msgstr ""
+msgstr "Товары на складе"
 
-#: .\autopurchases\models.py:354
+#: .\autopurchases\models.py:356
 msgid "Customer"
-msgstr ""
+msgstr "Заказчик"
 
-#: .\autopurchases\models.py:362
+#: .\autopurchases\models.py:364
 msgid "Total price"
-msgstr ""
+msgstr "Итоговая стоимость"
 
-#: .\autopurchases\models.py:392 .\autopurchases\models.py:393
+#: .\autopurchases\models.py:394 .\autopurchases\models.py:395
 msgid "Products in cart"
-msgstr ""
+msgstr "Товары в корзине"
 
-#: .\autopurchases\models.py:411
+#: .\autopurchases\models.py:413
 msgid "Delivery address"
-msgstr ""
+msgstr "Адрес доставки"
 
-#: .\autopurchases\models.py:414
+#: .\autopurchases\models.py:416
 msgid "Order status"
-msgstr ""
+msgstr "Статус заказа"
 
-#: .\autopurchases\models.py:420
+#: .\autopurchases\models.py:422
 msgid "Order"
-msgstr ""
+msgstr "Заказ"
 
-#: .\autopurchases\models.py:421
+#: .\autopurchases\models.py:423
 msgid "Orders"
-msgstr ""
+msgstr "Заказы"
 
-#: .\autopurchases\serializers.py:227
-msgid "Email"
-msgstr ""
+#: .\autopurchases\permissions.py:10
+msgid "Only profile owners can make changes"
+msgstr "Только пользователь может вносить изменения в свой профиль"
 
-#: .\autopurchases\serializers.py:229
-msgid "Password"
-msgstr ""
+#: .\autopurchases\permissions.py:17
+msgid "Only shop managers can make changes"
+msgstr "Только управляющий магазина может вносить изменения"
 
-#: .\autopurchases\serializers.py:234
-msgid "Token"
-msgstr ""
+#: .\autopurchases\permissions.py:32
+msgid "Only cart owners can make changes"
+msgstr "Только пользователь может вносить изменения в свою корзину"
 
-#: .\autopurchases\serializers.py:244
-msgid "Unable to log in with provided credentials."
-msgstr ""
 
-#: .\autopurchases\serializers.py:248
-msgid "Must include \"email\" and \"password\"."
+#: .\autopurchases\serializers.py:389
+msgid "Changing the delivery address of the created order is not available"
+msgstr "Изменение адрес доставки у созданного заказа невозможно"
+
+#: .\autopurchases\serializers.py:397
+msgid "Only shops can update the order status"
+msgstr "Только магазин может изменить статус заказа"
+
+#: .\autopurchases\serializers.py:411
+msgid "The selected shop does not have enough products in stock"
+msgstr "У выбранного магазина недостаточно товара на складе"
+
+#: .\autopurchases\serializers.py:418
+msgid "The selected product is not available for order"
+msgstr "Выбранный товар недоступен для заказа"
+
+#: .\autopurchases\views.py:153
+msgid "Contact not found"
+msgstr "Контакт не найден"
+
+#: .\autopurchases\views.py:168
+msgid "User not found"
+msgstr "Пользователь не найден"
+
+#: .\autopurchases\views.py:188
+msgid "Password reset token expired"
+msgstr "Срок действия токена сброса пароля истек"
+
+#: .\autopurchases\views.py:264
+msgid "Attachment required"
+msgstr "Требуется вложение"
+
+#: .\autopurchases\views.py:273
+msgid "Attached file's content type required"
+msgstr "Требуется указать тип содержимого вложения"
+
+#: .\autopurchases\views.py:280
+msgid ""
+"Shop import is available with 'multipart/form-data', 'application/json' or "
+"'application/yaml' content types"
 msgstr ""
+"Импорт данных магазина доступен с типом содержимого 'multipart/form-data', "
+"'application/json' или 'application/yaml'"
+
+#: .\autopurchases\views.py:314
+msgid "Order not found"
+msgstr "Заказ не найден"
+
+#: .\autopurchases\views.py:335
+msgid "Product not found"
+msgstr "Товар не найден"
+
+#: .\autopurchases\views.py:467
+msgid "Cart is empty"
+msgstr "Корзина пуста"
+
+msgid "Autopurchases: products and shops info"
+msgstr "Автозакупки: информация о товарах и магазинах"
+
+msgid "Autopurchases: users cart and orders info"
+msgstr "Автозакупки: информация о заказах и корзинах пользователей"

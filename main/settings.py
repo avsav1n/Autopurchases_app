@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+from django.utils.translation import gettext_lazy as _
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,7 +35,7 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "autopurchases.admin_site.apps.CustomAdminSiteConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -136,11 +138,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
     ],
-    # "DEFAULT_PARSER_CLASSES": [
-    #     "rest_framework_yaml.parsers.YAMLParser",
-    #     "rest_framework.parsers.JSONParser",
-    #     "rest_framework.parsers.MultiPartParser",
-    # ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
@@ -222,6 +219,7 @@ LOGGING = {
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
 
 # Smtp server settings
 
@@ -239,3 +237,42 @@ if DEBUG == True:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_STORE_EAGER_RESULT = True
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Autopurchases application constants
+
+PASSWORD_RESET_TOKEN_TTL = {"hours": 1}
+MAX_CONTACTS_FOR_USER = 5
+
+# Reorder parameters for custom admin site
+
+ADMIN_REORDER = (
+    {
+        "app": "auth",
+        "models": ("autopurchases.User", "auth.Group"),
+    },
+    {
+        "app": "authtoken",
+        "models": ("authtoken.TokenProxy", "autopurchases.PasswordResetToken"),
+    },
+    {
+        "app": "autopurchases",
+        "label": _("Autopurchases: products and shops info"),
+        "models": (
+            "autopurchases.Contact",
+            "autopurchases.Category",
+            "autopurchases.Parameter",
+            "autopurchases.Shop",
+            "autopurchases.Product",
+            "autopurchases.Stock",
+        ),
+    },
+    {
+        "app": "autopurchases",
+        "label": _("Autopurchases: users cart and orders info"),
+        "models": (
+            "autopurchases.Cart",
+            "autopurchases.Order",
+        ),
+    },
+    "django_celery_results",
+)

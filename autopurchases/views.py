@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
@@ -149,7 +150,7 @@ class UserViewSet(ModelViewSet):
         user: User = self.get_object()
         contact: Contact | None = UserModel.contacts.filter(pk=int(contact_pk)).first()
         if contact is None:
-            error_msg = "Contact not found"
+            error_msg = _("Contact not found")
             logger.error(error_msg)
             raise BadRequest(error_msg)
         contact.delete()
@@ -164,7 +165,7 @@ class UserViewSet(ModelViewSet):
         try:
             user: User | None = UserModel.objects.get(email=email_ser.validated_data["email"])
         except ObjectDoesNotExist:
-            error_msg = "User not found"
+            error_msg = _("User not found")
             logger.error(error_msg)
             raise NotFound(error_msg)
         PasswordResetToken.objects.update_or_create(user=user, defaults={"token": uuid.uuid4()})
@@ -184,7 +185,7 @@ class UserViewSet(ModelViewSet):
         rtoken_ser.is_valid(raise_exception=True)
         rtoken = get_object_or_404(PasswordResetToken, rtoken=rtoken_ser.validated_data["rtoken"])
         if not rtoken.is_valid():
-            error_msg = "Password reset token expired"
+            error_msg = _("Password reset token expired")
             logger.warning(error_msg)
             raise AuthenticationFailed(error_msg)
         user: User = rtoken.user
@@ -260,7 +261,7 @@ class ShopViewSet(ModelViewSet):
             case "multipart/form-data":
                 file: BytesIO | None = request.FILES.get("file", None)
                 if file is None:
-                    error_msg = "Attachment required"
+                    error_msg = _("Attachment required")
                     logger.warning(error_msg)
                     raise BadRequest(error_msg)
                 match file.content_type:
@@ -269,13 +270,13 @@ class ShopViewSet(ModelViewSet):
                     case "application/json":
                         data = json.load(file.read().decode())
                     case _:
-                        error_msg = "Attached file's content type required"
+                        error_msg = _("Attached file's content type required")
                         logger.warning(error_msg)
                         raise ParseError(error_msg)
             case "application/json" | "application/yaml":
                 data = request.data
             case _ as unsupported_type:
-                error_msg = (
+                error_msg = _(
                     "Shop import is available with 'multipart/form-data', "
                     "'application/json' or 'application/yaml' content types"
                 )
@@ -310,7 +311,7 @@ class ShopViewSet(ModelViewSet):
             Order.objects.with_dependencies().filter(product__shop=shop, pk=int(order_pk)).first()
         )
         if order is None:
-            error_msg = "Order not found"
+            error_msg = _("Order not found")
             logger.error(error_msg)
             raise BadRequest(error_msg)
         order_ser = OrderSerializer(
@@ -331,7 +332,7 @@ class ShopViewSet(ModelViewSet):
         shop: Shop = self.get_object()
         stock = Stock.objects.with_dependencies().filter(shop=shop, pk=stock_pk).first()
         if stock is None:
-            error_msg = "Product not found"
+            error_msg = _("Product not found")
             logger.error(error_msg)
             raise BadRequest(error_msg)
         stock_ser = StockSerializer(instance=stock, data=request.data, partial=True)
@@ -463,7 +464,7 @@ class CartViewSet(UserFilterMixin, ModelViewSet):
     def confirm_order(self, request: Request) -> Response:
         cart: QuerySet[Cart] = self.get_queryset()
         if not cart.exists():
-            error_msg = "Cart is empty"
+            error_msg = _("Cart is empty")
             logger.error(error_msg)
             raise NotFound(error_msg)
         order_ser = OrderSerializer(

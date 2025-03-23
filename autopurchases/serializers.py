@@ -386,7 +386,7 @@ class OrderSerializer(serializers.ModelSerializer):
     def validate_delivery_address(self, value: dict[str, str | int]) -> dict[str, str | int]:
         request: Request = self.context["request"]
         if request.method == "PATCH":
-            error_msg = "Changing the delivery address of the created order is not available"
+            error_msg = _("Changing the delivery address of the created order is not available")
             logger.error(error_msg)
             raise ValidationError(error_msg)
         return value
@@ -394,7 +394,7 @@ class OrderSerializer(serializers.ModelSerializer):
     def validate_status(self, value: str) -> str:
         request: Request = self.context["request"]
         if not request.path.startswith(reverse("autopurchases:shop-list")):
-            error_msg = "Only shops can update the order status"
+            error_msg = _("Only shops can update the order status")
             logger.error(error_msg)
             raise ValidationError(error_msg)
         return value
@@ -408,13 +408,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
 def check_quantity(on_stock: int, in_order: int) -> None:
     if on_stock < in_order:
-        error_msg = "The selected shop does not have enough products in stock"
+        error_msg = _("The selected shop does not have enough products in stock")
         logger.error(error_msg)
         raise ValidationError(error_msg)
 
 
 def check_availability(can_buy: bool) -> None:
     if not can_buy:
-        error_msg = "The selected product is not available for order"
+        error_msg = _("The selected product is not available for order")
         logger.error(error_msg)
         raise ValidationError(error_msg)

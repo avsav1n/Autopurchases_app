@@ -23,6 +23,13 @@ STATUS_CHOICES = {
 
 
 class UserManager(BaseUserManager):
+    """Class менеджера модели User.
+
+    Изменения:
+    - переопределены методы, меняющие поведение создания новых User, при использовании
+        в качестве USERNAME_FIELD поля 'email'.
+    """
+
     def _create_user(self, email: str, password: str, **extra_fields):
         if not email:
             raise ValueError("The given email must be set")
@@ -48,7 +55,14 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    """Модель таблицы User"""
+    """Модель таблицы пользователей (User).
+
+    Изменения:
+    - в качестве USERNAME_FIELD используется обязательное поле 'email';
+    - поле 'username' не используется;
+    - добавлено поле 'phone';
+    - менеджер модели заменен на другой, корректно обрабатывающий примененные выше изменения.
+    """
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -81,6 +95,8 @@ class User(AbstractUser):
 
 
 class Contact(models.Model):
+    """Модель таблицы контактов (адресов доставки)."""
+
     user: User = models.ForeignKey(
         to="User",
         on_delete=models.CASCADE,
@@ -107,13 +123,13 @@ class Contact(models.Model):
 
     def __str__(self):
         return (
-            f"{self.city}, {self.street}/{self.house}, "
-            f"{f'{self.apartment}' if self.apartment is not None else ''}"
+            f"{self.city}, {self.street}/{self.house}"
+            f"{f', {self.apartment}' if self.apartment is not None else ''}"
         )
 
 
 class PasswordResetToken(models.Model):
-    """Модель таблицы PasswordResetToken"""
+    """Модель таблицы токенов сброса паролей пользователей."""
 
     user: User = models.OneToOneField(
         to=settings.AUTH_USER_MODEL,
@@ -134,11 +150,11 @@ class PasswordResetToken(models.Model):
         verbose_name_plural = _("Password reset tokens")
 
     def __str__(self):
-        return self.rtoken
+        return str(self.rtoken)
 
 
 class Shop(models.Model):
-    """Модель таблицы Shop"""
+    """Модель таблицы магазинов."""
 
     name: str = models.CharField(
         verbose_name=_("Name"),
@@ -178,6 +194,11 @@ class Shop(models.Model):
 
 
 class ShopsManagers(models.Model):
+    """Модель ассоциативной таблицы (m2m отношения) таблиц магазинов и пользователей.
+
+    Содержит дополнительную информацию о роли пользователя в отношении магазина.
+    """
+
     manager: User = models.ForeignKey(
         to="User",
         on_delete=models.CASCADE,
@@ -194,7 +215,7 @@ class ShopsManagers(models.Model):
 
 
 class Category(models.Model):
-    """Модель таблицы Category"""
+    """Модель таблицы категорий товаров."""
 
     name: str = models.CharField(
         verbose_name=_("Name"),
@@ -207,12 +228,12 @@ class Category(models.Model):
         return self.name
 
     class Meta:
-        verbose_name = _("Category")
-        verbose_name_plural = _("Categories")
+        verbose_name = _("Products category")
+        verbose_name_plural = _("Products categories")
 
 
 class Product(models.Model):
-    """Модель таблицы Product"""
+    """Модель таблицы товаров."""
 
     category: Category = models.ForeignKey(
         to="Category",
@@ -249,7 +270,7 @@ class Product(models.Model):
 
 
 class Parameter(models.Model):
-    """Модель таблицы Parameter"""
+    """Модель таблицы параметров товаров."""
 
     name: str = models.CharField(
         verbose_name=_("Name"),
@@ -259,14 +280,19 @@ class Parameter(models.Model):
     )
 
     class Meta:
-        verbose_name = _("Parameter")
-        verbose_name_plural = _("Parameters")
+        verbose_name = _("Products parameter")
+        verbose_name_plural = _("Products parameters")
 
     def __str__(self):
         return self.name
 
 
 class ProductsParameters(models.Model):
+    """Модель ассоциативной таблицы (m2m отношения) таблиц товаров и параметров.
+
+    Содержит дополнительную информацию о значениях параметров в отношении товаров.
+    """
+
     product: Product = models.ForeignKey(
         to="Product",
         on_delete=models.CASCADE,
@@ -282,8 +308,8 @@ class ProductsParameters(models.Model):
     value: str = models.CharField(verbose_name=_("Value"), max_length=50)
 
     class Meta:
-        verbose_name = _("Parameter")
-        verbose_name_plural = _("Parameters")
+        verbose_name = _("Products parameter")
+        verbose_name_plural = _("Products parameters")
         constraints = [
             models.UniqueConstraint(
                 fields=["product", "parameter", "value"], name="unique-product-parameter"
@@ -292,6 +318,13 @@ class ProductsParameters(models.Model):
 
 
 class StockManager(models.Manager):
+    """Class менеджера модели Stock.
+
+    Изменения:
+    - добавлен метод 'wth_dependencies', который оптимизирует загрузку связанных объектов,
+    уменьшая количество запросов к базе данных.
+    """
+
     def with_dependencies(self) -> QuerySet:
         return self.select_related(
             "product__category",
@@ -303,9 +336,9 @@ class StockManager(models.Manager):
 
 
 class Stock(models.Model):
-    """Модель таблицы Stock
+    """Модель ассоциативной таблицы (m2m отношения) таблиц товаров и магазинов.
 
-    Таблица m2m отношения между Product и Shop.
+    Содержит дополнительную информацию о количестве и стоимости товара в отношении магазина.
     """
 
     objects: models.Manager = StockManager()
@@ -313,11 +346,13 @@ class Stock(models.Model):
         to="Shop",
         on_delete=models.CASCADE,
         verbose_name=_("Shop"),
+        help_text=_("Link to the shop."),
     )
     product: Product = models.ForeignKey(
         to="Product",
         on_delete=models.CASCADE,
         verbose_name=_("Product"),
+        help_text=_("Link to the product."),
     )
     quantity: int = models.PositiveIntegerField(
         verbose_name=_("Quantity"),
@@ -348,6 +383,8 @@ class Stock(models.Model):
 
 
 class BaseOrder(models.Model):
+    """Базовая модель для таблиц заказов."""
+
     customer: User = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -373,6 +410,13 @@ class BaseOrder(models.Model):
 
 
 class CartManager(models.Manager):
+    """Class менеджера модели Cart.
+
+    Изменения:
+    - добавлен метод 'wth_dependencies', который оптимизирует загрузку связанных объектов,
+    уменьшая количество запросов к базе данных.
+    """
+
     def with_dependencies(self) -> QuerySet:
         return self.select_related(
             "customer",
@@ -386,6 +430,12 @@ class CartManager(models.Manager):
 
 
 class Cart(BaseOrder):
+    """Модель ассоциативной таблицы (m2m отношения) таблиц товаров, магазинов и пользователей.
+
+    Содержит дополнительную информацию о количестве и итоговой стоимости товаров в
+        корзине пользователя.
+    """
+
     objects = CartManager()
 
     class Meta:
@@ -394,14 +444,22 @@ class Cart(BaseOrder):
 
 
 class OrderManager(CartManager):
+    """Class менеджера модели Order.
+
+    Изменения:
+    - добавлен метод 'wth_dependencies', который оптимизирует загрузку связанных объектов,
+    уменьшая количество запросов к базе данных.
+    """
+
     def with_dependencies(self) -> QuerySet:
         return super().with_dependencies().select_related("delivery_address")
 
 
 class Order(BaseOrder):
-    """Модель таблицы Order
+    """Модель ассоциативной таблицы (m2m отношения) таблиц товаров, магазинов и пользователей.
 
-    Таблица m2m отношения между Customer и Stock
+    Содержит дополнительную информацию о количестве, итоговой стоимости товаров, статусе и ключевых
+        датах созданного заказа пользователя.
     """
 
     objects = OrderManager()

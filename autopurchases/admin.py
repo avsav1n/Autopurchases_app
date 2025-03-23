@@ -1,5 +1,6 @@
 import logging
 import uuid
+from functools import partial
 from reprlib import repr
 from typing import TypeVar
 
@@ -47,7 +48,7 @@ class ShopManagersFormset(BaseInlineFormSet):
             if form.cleaned_data.get("DELETE"):
                 continue
             if (form_flag := form.cleaned_data.get("is_owner")) and main_flag:
-                error_msg = _("A store can only have one owner.")
+                error_msg = _("A shop can only have one owner.")
                 logger.warning(error_msg)
                 raise ValidationError(error_msg)
             main_flag = main_flag or form_flag
@@ -107,6 +108,8 @@ class CustomUserAdmin(UserAdmin):
     list_display_links = ("email",)
     ordering = ("email",)
 
+    readonly_fields = ("date_joined", "last_login")
+
     search_fields = ("email", "first_name", "last_name")
     search_help_text = _("Email, first or last name")
 
@@ -136,7 +139,7 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
-    @admin.display(boolean=True, ordering="is_manager", description=_("Shops manager"))
+    @admin.display(boolean=True, ordering="is_manager", description=_("Shop manager"))
     def is_manager_display(self, obj: User) -> bool:
         return obj.is_manager
 
@@ -222,7 +225,7 @@ class ShopAdmin(admin.ModelAdmin):
 
     inlines = [ShopManagersInline]
 
-    fieldsets = ((_("Shop name"), {"fields": ("name", "slug")}),)
+    fieldsets = ((_("Shop info"), {"fields": ("name", "slug")}),)
 
     @admin.display(description=_("Number of managers"), ordering="managers_count")
     def managers_count_display(self, obj: Shop) -> int:
@@ -244,6 +247,8 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     search_help_text = _("Category name")
 
+    fieldsets = ((("Category info"), {"fields": ("name",)}),)
+
 
 @admin.register(Parameter)
 class ParameterAdmin(admin.ModelAdmin):
@@ -253,6 +258,8 @@ class ParameterAdmin(admin.ModelAdmin):
 
     search_fields = ("name",)
     search_help_text = _("Parameter name")
+
+    fieldsets = ((("Parameter info"), {"fields": ("name",)}),)
 
 
 @admin.register(Product)
@@ -267,6 +274,8 @@ class ProductAdmin(admin.ModelAdmin):
     autocomplete_fields = ("category",)
 
     inlines = [ProductParametersInline]
+
+    fieldsets = ((("Product info"), {"fields": ("name", "category", "model")}),)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Product]:
         qs = super().get_queryset(request)
@@ -288,6 +297,13 @@ class StockAdmin(admin.ModelAdmin):
 
     autocomplete_fields = ("shop", "product")
 
+    fieldsets = (
+        (
+            _("Stock position info"),
+            {"fields": ("product", "shop", "quantity", "price", "can_buy")},
+        ),
+    )
+
     def get_queryset(self, request: HttpRequest) -> QuerySet[Stock]:
         qs = super().get_queryset(request)
         qs = qs.select_related("shop", "product__category")
@@ -306,6 +322,10 @@ class CartAdmin(admin.ModelAdmin):
         "customer__email",
     )
     search_help_text = _("Customer email, shop, product or product category name")
+
+    fieldsets = (
+        (_("Cart position info"), {"fields": ("customer", "product", "quantity", "total_price")}),
+    )
 
     def has_change_permission(self, *args, **kwargs) -> bool:
         return False
@@ -336,7 +356,15 @@ class OrderAdmin(admin.ModelAdmin):
     list_display_links = ("customer",)
     list_editable = ("status",)
 
-    readonly_fields = ("customer", "product", "delivery_address", "quantity", "total_price")
+    readonly_fields = (
+        "customer",
+        "product",
+        "delivery_address",
+        "quantity",
+        "total_price",
+        "created_at",
+        "updated_at",
+    )
 
     search_fields = (
         "product__shop__name",
@@ -345,6 +373,23 @@ class OrderAdmin(admin.ModelAdmin):
         "customer__email",
     )
     search_help_text = _("Customer email, shop, product or product category name")
+
+    fieldsets = (
+        (
+            ("Order info"),
+            {
+                "fields": (
+                    "customer",
+                    "delivery_address",
+                    "product",
+                    "quantity",
+                    "total_price",
+                    "status",
+                )
+            },
+        ),
+        (("Timestamps"), {"fields": ("created_at", "updated_at")}),
+    )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
