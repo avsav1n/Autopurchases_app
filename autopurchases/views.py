@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -151,7 +152,13 @@ class UserViewSet(ModelViewSet):
         user: User = self.get_object()
         contact: Contact | None = Contact.objects.filter(user=user, pk=int(contact_pk)).first()
         if contact is None:
-            error_msg = _("Contact not found")
+            error_msg = format_lazy(
+                _(
+                    "Contact pk={pk} not found or does not belong to the user '{email}'",
+                    pk=contact_pk,
+                    email=user.email,
+                )
+            )
             logger.error(error_msg)
             raise BadRequest(error_msg)
         contact.delete()
@@ -167,7 +174,9 @@ class UserViewSet(ModelViewSet):
         try:
             user: User | None = UserModel.objects.get(email=email_ser.validated_data["email"])
         except ObjectDoesNotExist:
-            error_msg = _("User not found")
+            error_msg = format_lazy(
+                _("User '{email}' not found"), email=email_ser.validated_data["email"]
+            )
             logger.error(error_msg)
             raise NotFound(error_msg)
         PasswordResetToken.objects.update_or_create(user=user, defaults={"token": uuid.uuid4()})
@@ -313,7 +322,7 @@ class ShopViewSet(ModelViewSet):
             Order.objects.with_dependencies().filter(product__shop=shop, pk=int(order_pk)).first()
         )
         if order is None:
-            error_msg = _("Order not found")
+            error_msg = format_lazy(_("Order pk={pk} not found"), pk=order_pk)
             logger.error(error_msg)
             raise BadRequest(error_msg)
         order_ser = OrderSerializer(
@@ -334,7 +343,7 @@ class ShopViewSet(ModelViewSet):
         shop: Shop = self.get_object()
         stock = Stock.objects.with_dependencies().filter(shop=shop, pk=stock_pk).first()
         if stock is None:
-            error_msg = _("Product not found")
+            error_msg = format_lazy(_("Product pk={pk} not found"), pk=stock_pk)
             logger.error(error_msg)
             raise BadRequest(error_msg)
         stock_ser = StockSerializer(instance=stock, data=request.data, partial=True)

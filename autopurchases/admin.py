@@ -1,15 +1,12 @@
 import logging
 import uuid
-from functools import partial
-from reprlib import repr
-from typing import TypeVar
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.db import models
-from django.db.models import Case, Count, F, QuerySet, Value, When
+from django.db.models import Case, Count, QuerySet, Value, When
 from django.forms import BaseInlineFormSet, ValidationError
 from django.http import HttpRequest
 from django.utils import timezone
@@ -145,6 +142,7 @@ class CustomUserAdmin(UserAdmin):
                 output_field=models.BooleanField(),
             )
         )
+        qs = qs.prefetch_related("contacts")
         return qs
 
 

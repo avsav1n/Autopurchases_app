@@ -1,5 +1,4 @@
 import logging
-from typing import ClassVar
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
@@ -58,7 +57,7 @@ class CustomModelSerializer(serializers.ModelSerializer):
 
 
 class ContactSerializer(CustomModelSerializer):
-    """Сериализатор для работы с контактами (адресами).
+    """Serializer-class для работы с контактами (адресами).
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -105,7 +104,7 @@ class ContactSerializer(CustomModelSerializer):
 
 
 class UserSerializer(CustomModelSerializer):
-    """Сериализатор для работы с пользователями.
+    """Serializer-class для работы с пользователями.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -162,7 +161,7 @@ class UserSerializer(CustomModelSerializer):
 
 
 class EmailSerializer(serializers.Serializer):
-    """Сериализатор для валидации email.
+    """Serializer-class для валидации email.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -174,7 +173,7 @@ class EmailSerializer(serializers.Serializer):
 
 
 class PasswordResetSerializer(serializers.Serializer):
-    """Сериализатор для валидации токена сброса пароля и пароля для замены.
+    """Serializer-class для валидации токена сброса пароля и пароля для замены.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -190,7 +189,7 @@ class PasswordResetSerializer(serializers.Serializer):
 
 
 class ShopSerializer(CustomModelSerializer):
-    """Сериализатор для работы с магазинами.
+    """Serializer-class для работы с магазинами.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -264,7 +263,7 @@ class ShopSerializer(CustomModelSerializer):
 
 
 class CategorySerializer(CustomModelSerializer):
-    """Сериализатор для работы с категориями товаров.
+    """Serializer-class для работы с категориями товаров.
 
     Только для программного использования в качестве вложенного.
     """
@@ -309,7 +308,7 @@ class CategorySerializer(CustomModelSerializer):
 
 
 class ParameterListSerializer(serializers.ListSerializer):
-    """Сериализатор списка ParameterSerializer."""
+    """Serializer-class списка ParameterSerializer."""
 
     def to_internal_value(self, data: dict[str, str | int]):
         """Метод преобразования входных данных для десериализации.
@@ -357,7 +356,7 @@ class ParameterListSerializer(serializers.ListSerializer):
 
 
 class ParameterSerializer(CustomModelSerializer):
-    """Сериализатор для работы с параметрами товаров.
+    """Serializer-class для работы с параметрами товаров.
 
     Только для программного использования в качестве вложенного.
     """
@@ -389,7 +388,7 @@ class ParameterSerializer(CustomModelSerializer):
 
 
 class ProductSerializer(CustomModelSerializer):
-    """Сериализатор для работы с товарами.
+    """Serializer-class для работы с товарами.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -461,7 +460,7 @@ class ProductSerializer(CustomModelSerializer):
 
 
 class EmailAuthTokenSerializer(serializers.Serializer):
-    """Сериализатор для работы с токенами аутентификации.
+    """Serializer-class для работы с токенами аутентификации.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -505,7 +504,7 @@ class EmailAuthTokenSerializer(serializers.Serializer):
 
 
 class StockSerializer(CustomModelSerializer):
-    """Сериализатор для работы со складами - ассоциативной таблицей товаров и магазинов.
+    """Serializer-class для работы со складами - ассоциативной таблицей товаров и магазинов.
 
     Пример сериализованных данных (в формате JSON):
         {
@@ -589,7 +588,7 @@ class StockSerializer(CustomModelSerializer):
 
 
 class CartSerializer(CustomModelSerializer):
-    """Сериализатор для работы с корзиной пользователя.
+    """Serializer-class для работы с корзиной пользователя.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -748,7 +747,7 @@ class OrderListSerializer(serializers.ListSerializer):
 
 
 class OrderSerializer(CustomModelSerializer):
-    """Сериализатор для работы с заказами.
+    """Serializer-class для работы с заказами.
 
     Пример принимаемых данных для десериализации (в формате JSON):
         {
@@ -878,7 +877,7 @@ class OrderSerializer(CustomModelSerializer):
                 }
         """
         repr: dict[str, int | dict] = super().to_representation(instance)
-        print("123")
+
         repr["customer"] = repr["customer"]["email"]
 
         product_info: dict = repr.pop("product")

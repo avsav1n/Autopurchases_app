@@ -80,8 +80,8 @@ class User(AbstractUser):
         blank=True,
         null=True,
     )
-    first_name = models.CharField(_("first name"), max_length=150, blank=True, null=True)
-    last_name = models.CharField(_("last name"), max_length=150, blank=True, null=True)
+    first_name = models.CharField(_("First name"), max_length=150, blank=True, null=True)
+    last_name = models.CharField(_("Last name"), max_length=150, blank=True, null=True)
 
     class Meta:
         verbose_name = _("User")
