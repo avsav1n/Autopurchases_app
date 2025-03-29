@@ -1,6 +1,6 @@
 import functools
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from pprint import pp
 
 from django.conf import settings
@@ -64,8 +64,10 @@ class CustomAdminSite(admin.AdminSite):
             app_markup: dict[str, str | list] | None = create_app_markup(
                 app_config, apps_dict, models_dict
             )
-            apps_list.append(deepcopy(app_markup))
-        self.apps_markup = apps_list
+            if app_markup is not None:
+                apps_list.append(deepcopy(app_markup))
+        if apps_list:
+            self.apps_markup = apps_list
         return apps_list
 
 
