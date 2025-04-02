@@ -446,8 +446,8 @@ msgstr "Заказ с pk={pk} не найден"
 
 #: .\autopurchases\views.py:346
 #, python-brace-format
-msgid "Product pk={pk} not found"
-msgstr "Товар с pk={pk} не найден"
+msgid "Product on stock pk={pk} not found"
+msgstr "Товар на складе с pk={pk} не найден"
 
 #: .\autopurchases\views.py:478
 msgid "Cart is empty"

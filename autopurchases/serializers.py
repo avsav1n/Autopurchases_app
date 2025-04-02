@@ -12,7 +12,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.reverse import reverse
-from rest_framework.validators import UniqueValidator
 
 from autopurchases.models import (
     Cart,
@@ -86,7 +85,7 @@ class ContactSerializer(CustomModelSerializer):
         model = Contact
         fields = ["id", "city", "street", "house", "apartment"]
 
-    def validate(self, attrs: dict) -> dict:
+    def validate(self, attrs: dict[str, str]) -> dict[str, str]:
         user: User = self.context["request"].user
         if user.contacts.count() >= settings.MAX_CONTACTS_FOR_USER:
             error_msg = format_lazy(
@@ -97,7 +96,7 @@ class ContactSerializer(CustomModelSerializer):
             raise ValidationError(error_msg)
         return attrs
 
-    def create(self, validated_data: dict) -> Contact:
+    def create(self, validated_data: dict[str, str]) -> Contact:
         user: User = self.context["request"].user
         contact = Contact.objects.create(user=user, **validated_data)
         return contact
@@ -215,20 +214,18 @@ class ShopSerializer(CustomModelSerializer):
         model = Shop
         fields = ["id", "name", "created_at", "updated_at", "managers"]
 
-    def to_internal_value(self, data: dict | str):
+    def to_internal_value(self, data: dict[str, str | list[int]] | str) -> dict:
         """Метод преобразования входных данных для десериализации.
 
         Поддерживает следующие форматы входных данных:
         - str (только для программного использования)
             Пример десериализации:
-                shop_ser = ShopSerializer(data="example_shop_name")
-                shop_ser.is_valid(raise_exception=True)
-                ...
+                >>> shop_ser = ShopSerializer(data="example_shop_name")
+                >>> shop_ser.is_valid(raise_exception=True)
         - dict (для API)
             Пример десериализации:
-                shop_ser = ShopSerializer(data={"name": "example_shop_name"})
-                shop_ser.is_valid(raise_exception=True)
-                ...
+                >>> shop_ser = ShopSerializer(data={"name": "example_shop_name"})
+                >>> shop_ser.is_valid(raise_exception=True)
         """
         if isinstance(data, str):
             data = {"name": data}
@@ -273,20 +270,18 @@ class CategorySerializer(CustomModelSerializer):
         fields = ["id", "name"]
         extra_kwargs = {"name": {"validators": []}}
 
-    def to_internal_value(self, data: dict | str):
+    def to_internal_value(self, data: dict[str, str] | str) -> dict:
         """Метод преобразования входных данных для десериализации.
 
         Поддерживает следующие форматы входных данных:
         - str
             Пример десериализации:
-                category_ser = CategorySerializer(data="smartphones")
-                category_ser.is_valid(raise_exception=True)
-                ...
+                >>> category_ser = CategorySerializer(data="smartphones")
+                >>> category_ser.is_valid(raise_exception=True)
         - dict
             Пример десериализации:
-                category_ser = CategorySerializer(data={"name": "smartphones"})
-                category_ser.is_valid(raise_exception=True)
-                ...
+                >>> category_ser = CategorySerializer(data={"name": "smartphones"})
+                >>> category_ser.is_valid(raise_exception=True)
         """
         if isinstance(data, str):
             data = {"name": data}
@@ -310,20 +305,15 @@ class CategorySerializer(CustomModelSerializer):
 class ParameterListSerializer(serializers.ListSerializer):
     """Serializer-class списка ParameterSerializer."""
 
-    def to_internal_value(self, data: dict[str, str | int]):
+    def to_internal_value(self, data: dict[str, str | int]) -> list[dict]:
         """Метод преобразования входных данных для десериализации.
 
         Поддерживает следующие форматы входных данных:
         - dict[str, str | int]
             Пример десериализации:
-                data = {
-                    "colour": "black",
-                    "size": 120x140,
-                    "weight": 20
-                }
-                parameter_ser = ParameterSerializer(data=data, many=True)
-                parameter_ser.is_valid(raise_exception=True)
-                ...
+                >>> data = {"colour": "black", "size": 120x140, "weight": 20}
+                >>> parameter_ser = ParameterSerializer(data=data, many=True)
+                >>> parameter_ser.is_valid(raise_exception=True)
         """
         data = [{"name": key.capitalize(), "value": str(value)} for key, value in data.items()]
         return super().to_internal_value(data)
@@ -429,7 +419,7 @@ class ProductSerializer(CustomModelSerializer):
         extra_kwargs = {"name": {"validators": []}}
 
     @transaction.atomic
-    def create(self, validated_data: dict):
+    def create(self, validated_data: dict[str, str | int | dict]) -> Product:
         shop: Shop = self.context["shop"]
 
         category, _ = Category.objects.get_or_create(**validated_data["category"])
@@ -530,7 +520,7 @@ class StockSerializer(CustomModelSerializer):
         model = Stock
         fields = ["id", "shop", "product", "quantity", "price", "can_buy"]
 
-    def to_representation(self, instance: Stock):
+    def to_representation(self, instance: Stock) -> dict[str, str | int | dict]:
         """Метод возврата сериализованных данных.
 
         Изменения:
@@ -632,17 +622,17 @@ class CartSerializer(CustomModelSerializer):
         ]
         read_only_fields = ["total_price", "customer"]
 
-    def validate(self, attrs: dict):
+    def validate(self, attrs: dict[str, int | Product]) -> dict[str, int | Product]:
         stock: Stock = attrs["product"]
         check_availability(can_buy=stock.can_buy)
         check_quantity(on_stock=stock.quantity, in_order=attrs["quantity"])
         return attrs
 
-    def create(self, validated_data: dict):
+    def create(self, validated_data: dict[str, int | Product]) -> Cart:
         validated_data["customer"] = self.context["request"].user
         return super().create(validated_data)
 
-    def to_representation(self, instance: Cart):
+    def to_representation(self, instance: Cart) -> dict[str, str | int | bool | dict]:
         """Метод возврата сериализованных данных.
 
         Изменения:
@@ -717,7 +707,7 @@ class CartSerializer(CustomModelSerializer):
 
 
 class OrderListSerializer(serializers.ListSerializer):
-    def create(self, validated_data: list[dict]):
+    def create(self, validated_data: list[dict]) -> list[Order]:
         validated_data: dict = validated_data[0]
         delivery_address, _ = Contact.objects.get_or_create(**validated_data["delivery_address"])
         cart: QuerySet[Cart] = self.context["cart"]
@@ -809,7 +799,7 @@ class OrderSerializer(CustomModelSerializer):
         read_only_fields = ["customer", "product", "quantity", "total_price"]
         list_serializer_class = OrderListSerializer
 
-    def to_representation(self, instance: Order):
+    def to_representation(self, instance: Order) -> dict[str, str | int | bool | dict]:
         """Метод возврата сериализованных данных.
 
         Изменения:
@@ -889,7 +879,7 @@ class OrderSerializer(CustomModelSerializer):
         repr["delivery_address"].pop("id")
         return repr
 
-    def validate_delivery_address(self, value: dict[str, str | int]) -> dict[str, str | int]:
+    def validate_delivery_address(self, value: dict[str, str]) -> dict[str, str]:
         request: Request = self.context["request"]
         if request.method == "PATCH":
             error_msg = _("Changing the delivery address of the created order is not available")

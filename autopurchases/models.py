@@ -5,7 +5,6 @@ from uuid import UUID
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -258,10 +257,7 @@ class Product(models.Model):
         to="Shop", through="Stock", related_name="products", verbose_name=_("Shops")
     )
     parameters: list["Parameter"] = models.ManyToManyField(
-        to="Parameter",
-        through="ProductsParameters",
-        related_name="products",
-        verbose_name=_("Parameters"),
+        to="Parameter", through="ProductsParameters", verbose_name=_("Parameters")
     )
 
     class Meta:

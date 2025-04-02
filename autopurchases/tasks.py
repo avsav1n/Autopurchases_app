@@ -4,9 +4,8 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db import transaction
-from django.db.models import QuerySet
 
-from autopurchases.models import Product, Shop, Stock, User
+from autopurchases.models import Shop, Stock, User
 from autopurchases.serializers import ProductSerializer, ShopSerializer, StockSerializer
 
 logger = logging.getLogger(__name__)

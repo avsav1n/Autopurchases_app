@@ -93,7 +93,15 @@ class IsManagerListFilter(admin.SimpleListFilter):
 
 @admin.register(UserModel)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("id", "email", "is_staff", "is_manager_display")
+    list_display = (
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "phone",
+        "is_staff",
+        "is_manager_display",
+    )
     list_filter = ("is_staff", IsManagerListFilter)
     list_display_links = ("email",)
     ordering = ("email",)

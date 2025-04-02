@@ -1,7 +1,5 @@
 import functools
-import logging
 from copy import deepcopy
-from pprint import pp
 
 from django.conf import settings
 from django.contrib import admin

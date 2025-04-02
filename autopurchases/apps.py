@@ -8,7 +8,7 @@ class AutopurchasesConfig(AppConfig):
     verbose_name = _("Autopurchases")
 
     def ready(self):
-        from autopurchases.signals import (
+        from autopurchases.signals import (  # noqa: F401
             new_order_created,
             new_user_registered,
             order_updated,

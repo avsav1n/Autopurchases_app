@@ -1,11 +1,11 @@
 import json
 import logging
 import uuid
-from datetime import timedelta
 from io import BytesIO
 
 import yaml
 from celery.result import AsyncResult
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
@@ -132,7 +132,7 @@ class UserViewSet(ModelViewSet):
     permission_classes = [IsMeOrAdmin]
 
     @action(methods=["POST"], detail=True, url_path="contacts", url_name="create-contact")
-    def create_contact(self, request: Request, pk: int) -> Response:
+    def create_contact(self, request: Request, pk: str) -> Response:
         user: User = self.get_object()
         contact_ser = ContactSerializer(data=request.data, context={"request": self.request})
         contact_ser.is_valid(raise_exception=True)
@@ -148,9 +148,9 @@ class UserViewSet(ModelViewSet):
         url_path="contacts/(?P<contact_pk>[^/.]+)",
         url_name="delete-contact",
     )
-    def delete_contact(self, request: Request, pk: int, contact_pk: str) -> Response:
+    def delete_contact(self, request: Request, pk: str, contact_pk: str) -> Response:
         user: User = self.get_object()
-        contact: Contact | None = Contact.objects.filter(user=user, pk=int(contact_pk)).first()
+        contact: Contact | None = Contact.objects.filter(user=user, pk=contact_pk).first()
         if contact is None:
             error_msg = format_lazy(
                 _(
@@ -168,7 +168,7 @@ class UserViewSet(ModelViewSet):
         return Response(user_ser.data, status=status.HTTP_200_OK)
 
     @action(methods=["GET"], detail=False, url_path="reset", url_name="reset-password")
-    def get_password_reset_token(self, request: Request):
+    def get_password_reset_token(self, request: Request) -> Response:
         email_ser = EmailSerializer(data=request.data)
         email_ser.is_valid(raise_exception=True)
         try:
@@ -191,7 +191,7 @@ class UserViewSet(ModelViewSet):
         url_path="reset/confirm",
         url_name="reset-password-confirm",
     )
-    def update_password(self, request: Request):
+    def update_password(self, request: Request) -> Response:
         rtoken_ser = PasswordResetSerializer(data=request.data)
         rtoken_ser.is_valid(raise_exception=True)
         rtoken = get_object_or_404(PasswordResetToken, rtoken=rtoken_ser.validated_data["rtoken"])
@@ -219,7 +219,8 @@ class ShopViewSet(ModelViewSet):
                 "name": str,
                 "managers": [user.id, ...]  # опционально
             }
-    - PATCH /<slug:shop.slug>/: Изменение профиля магазина. Изменению доступны поля "name" и "managers".
+    - PATCH /<slug:shop.slug>/: Изменение профиля магазина. Изменению доступны поля "name" и
+        "managers".
     - DELETE /<slug:shop.slug>/: Удаление профиля магазина.
     - POST /import/: Регистрация нового магазина со всем его ассортиментом. Для этого
         необходимо передать информацию о магазине и продуктах в теле запроса или файлом в формате
@@ -319,7 +320,7 @@ class ShopViewSet(ModelViewSet):
     def update_shop_order_status(self, request: Request, slug: str, order_pk: str) -> Response:
         shop: Shop = self.get_object()
         order: Order | None = (
-            Order.objects.with_dependencies().filter(product__shop=shop, pk=int(order_pk)).first()
+            Order.objects.with_dependencies().filter(product__shop=shop, pk=order_pk).first()
         )
         if order is None:
             error_msg = format_lazy(_("Order pk={pk} not found"), pk=order_pk)
@@ -339,11 +340,11 @@ class ShopViewSet(ModelViewSet):
         url_name="update-product-on-stock",
         permission_classes=[IsManagerOrAdmin],
     )
-    def update_product_on_stock(self, request: Request, slug: str, stock_pk: str):
+    def update_product_on_stock(self, request: Request, slug: str, stock_pk: str) -> Response:
         shop: Shop = self.get_object()
         stock = Stock.objects.with_dependencies().filter(shop=shop, pk=stock_pk).first()
         if stock is None:
-            error_msg = format_lazy(_("Product pk={pk} not found"), pk=stock_pk)
+            error_msg = format_lazy(_("Product on stock pk={pk} not found"), pk=stock_pk)
             logger.error(error_msg)
             raise BadRequest(error_msg)
         stock_ser = StockSerializer(instance=stock, data=request.data, partial=True)
@@ -516,13 +517,16 @@ class CeleryTaskView(APIView):
     - GET-detail: Получение информации о статусе задачи по указанному task_id.
     """
 
-    def get(self, request: Request, task_id: str):
+    def get(self, request: Request, task_id: str) -> Response:
         task = AsyncResult(id=task_id)
         response = {"task_id": task.id, "status": task.status}
         if task.ready() and task.result is not None:
             response.update(
                 {
-                    "link": f"http://localhost:8000{reverse('autopurchases:download-file', kwargs={"task_id": task.id})}"
+                    "link": (
+                        f"{settings.BASE_URL}"
+                        f"{reverse('autopurchases:download-file', kwargs={"task_id": task.id})}"
+                    )
                 }
             )
         return Response(response)
@@ -538,7 +542,7 @@ class DownloadFileView(APIView):
 
     renderer_classes = [YAMLRenderer, JSONRenderer]
 
-    def get(self, request: Request, task_id: str):
+    def get(self, request: Request, task_id: str) -> Response:
         task = AsyncResult(id=task_id)
         ext = request.accepted_renderer.format
         filename = f"{task.result['shop']}_{timezone.now().date()}.{ext}"
