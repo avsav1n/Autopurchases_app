@@ -1,0 +1,206 @@
+{
+  "shop": "DNS",
+  "products": [
+    {
+      "id": 4,
+      "quantity": 14,
+      "price": 110000,
+      "can_buy": false,
+      "category": "Смартфоны",
+      "model": "apple/iphone/xs-max",
+      "name": "Смартфон Apple iPhone XS Max 512GB (золотистый)",
+      "parameters": {
+        "Диагональ (дюйм)": "6.5",
+        "Разрешение (пикс)": "2688x1242",
+        "Встроенная память (гб)": "512",
+        "Цвет": "золотистый"
+      }
+    },
+    {
+      "id": 5,
+      "quantity": 9,
+      "price": 65000,
+      "can_buy": true,
+      "category": "Смартфоны",
+      "model": "apple/iphone/xr",
+      "name": "Смартфон Apple iPhone XR 256GB (красный)",
+      "parameters": {
+        "Диагональ (дюйм)": "6.5",
+        "Разрешение (пикс)": "1792x828",
+        "Встроенная память (гб)": "256",
+        "Цвет": "красный"
+      }
+    },
+    {
+      "id": 6,
+      "quantity": 5,
+      "price": 65000,
+      "can_buy": true,
+      "category": "Смартфоны",
+      "model": "apple/iphone/xr",
+      "name": "Смартфон Apple iPhone XR 256GB (черный)",
+      "parameters": {
+        "Диагональ (дюйм)": "6.5",
+        "Разрешение (пикс)": "1792x828",
+        "Встроенная память (гб)": "256",
+        "Цвет": "черный"
+      }
+    },
+    {
+      "id": 7,
+      "quantity": 7,
+      "price": 60000,
+      "can_buy": true,
+      "category": "Смартфоны",
+      "model": "apple/iphone/xr",
+      "name": "Смартфон Apple iPhone XR 128GB (синий)",
+      "parameters": {
+        "Диагональ (дюйм)": "6.5",
+        "Разрешение (пикс)": "1792x828",
+        "Встроенная память (гб)": "256",
+        "Цвет": "синий"
+      }
+    },
+    {
+      "id": 8,
+      "quantity": 5,
+      "price": 80000,
+      "can_buy": true,
+      "category": "Аксессуары",
+      "model": "samsung/galaxy-s20",
+      "name": "Smartphone Samsung Galaxy S20 128GB (black)",
+      "parameters": {
+        "Screen size (inches)": "6.2",
+        "Resolution (pixels)": "3200x1440",
+        "Internal memory (gb)": "128",
+        "Color": "black"
+      }
+    },
+    {
+      "id": 9,
+      "quantity": 3,
+      "price": 95000,
+      "can_buy": true,
+      "category": "Аксессуары",
+      "model": "samsung/galaxy-note20",
+      "name": "Smartphone Samsung Galaxy Note20 256GB (mystic bronze)",
+      "parameters": {
+        "Screen size (inches)": "6.7",
+        "Resolution (pixels)": "2400x1080",
+        "Internal memory (gb)": "256",
+        "Color": "mystic bronze"
+      }
+    },
+    {
+      "id": 10,
+      "quantity": 10,
+      "price": 1500,
+      "can_buy": true,
+      "category": "Flash-накопители",
+      "model": "sandisk/ultra-flair-64gb",
+      "name": "USB Flash Drive SanDisk Ultra Flair 64GB (silver)",
+      "parameters": {
+        "Color": "silver",
+        "Capacity (gb)": "64"
+      }
+    },
+    {
+      "id": 11,
+      "quantity": 8,
+      "price": 1000,
+      "can_buy": true,
+      "category": "Flash-накопители",
+      "model": "kingston/datatraveler-32gb",
+      "name": "USB Flash Drive Kingston DataTraveler 32GB (red)",
+      "parameters": {
+        "Color": "red",
+        "Capacity (gb)": "32"
+      }
+    },
+    {
+      "id": 12,
+      "quantity": 6,
+      "price": 70000,
+      "can_buy": true,
+      "category": "Смартфоны",
+      "model": "xiaomi/mi-10t-pro",
+      "name": "Smartphone Xiaomi Mi 10T Pro 256GB (cosmic black)",
+      "parameters": {
+        "Screen size (inches)": "6.67",
+        "Resolution (pixels)": "2400x1080",
+        "Internal memory (gb)": "256",
+        "Color": "cosmic black"
+      }
+    },
+    {
+      "id": 13,
+      "quantity": 4,
+      "price": 2500,
+      "can_buy": true,
+      "category": "Телевизоры",
+      "model": "samsung/qled-q90r",
+      "name": "Samsung QLED Q90R 65\" 4K UHD Smart TV",
+      "parameters": {
+        "Screen size (inches)": "65",
+        "Resolution (pixels)": "3840x2160",
+        "Smart tv": "True"
+      }
+    },
+    {
+      "id": 14,
+      "quantity": 7,
+      "price": 1800,
+      "can_buy": true,
+      "category": "Телевизоры",
+      "model": "lg/oled-cx",
+      "name": "LG OLED CX 55\" 4K UHD Smart TV",
+      "parameters": {
+        "Screen size (inches)": "55",
+        "Resolution (pixels)": "3840x2160",
+        "Smart tv": "True"
+      }
+    },
+    {
+      "id": 15,
+      "quantity": 3,
+      "price": 3000,
+      "can_buy": true,
+      "category": "Телевизоры",
+      "model": "sony/bravia-x900h",
+      "name": "Sony Bravia X900H 75\" 4K UHD Smart TV",
+      "parameters": {
+        "Screen size (inches)": "75",
+        "Resolution (pixels)": "3840x2160",
+        "Smart tv": "True"
+      }
+    },
+    {
+      "id": 16,
+      "quantity": 10,
+      "price": 700,
+      "can_buy": true,
+      "category": "Телевизоры",
+      "model": "tcl/6-series",
+      "name": "TCL 6-Series 55\" 4K UHD Smart TV",
+      "parameters": {
+        "Screen size (inches)": "55",
+        "Resolution (pixels)": "3840x2160",
+        "Smart tv": "True"
+      }
+    },
+    {
+      "id": 17,
+      "quantity": 5,
+      "price": 1200,
+      "can_buy": true,
+      "category": "Телевизоры",
+      "model": "vizio/p-series-quantum",
+      "name": "Vizio P-Series Quantum 65\" 4K UHD Smart TV",
+      "parameters": {
+        "Screen size (inches)": "65",
+        "Resolution (pixels)": "3840x2160",
+        "Smart tv": "True"
+      }
+    }
+  ]
+}

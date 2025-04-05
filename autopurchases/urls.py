@@ -39,7 +39,7 @@ urlpatterns = [
     path("", include(router.urls)),
     path("order/", OrderView.as_view(), name="order"),
     path("stock/", StockView.as_view(), name="stock"),
-    path("task/<str:task_id>/", CeleryTaskView.as_view(), name="celery-results"),
+    path("task/<str:task_id>/", CeleryTaskView.as_view(), name="celery-result"),
     path("download/<str:task_id>/", DownloadFileView.as_view(), name="download-file"),
     path("login/", EmailObtainAuthToken.as_view(), name="login"),
 ]

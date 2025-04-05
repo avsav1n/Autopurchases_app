@@ -395,7 +395,7 @@ msgstr "Токен"
 
 #: .\autopurchases\serializers.py:895
 msgid "Changing the delivery address of the created order is not available"
-msgstr "Изменение адрес доставки у созданного заказа невозможно"
+msgstr "Изменение адреса доставки у созданного заказа невозможно"
 
 #: .\autopurchases\serializers.py:903
 msgid "Only shops can update the order status"
@@ -446,12 +446,16 @@ msgstr "Заказ с pk={pk} не найден"
 
 #: .\autopurchases\views.py:346
 #, python-brace-format
-msgid "Product on stock pk={pk} not found"
+msgid "Product in stock pk={pk} not found"
 msgstr "Товар на складе с pk={pk} не найден"
 
 #: .\autopurchases\views.py:478
 msgid "Cart is empty"
 msgstr "Корзина пуста"
+
+#: .\autopurchases\views.py:482
+msgid "Products in the cart are not available for ordering"
+msgstr "Товары в корзине недоступны для заказа"
 
 msgid "Autopurchases: products and shops info"
 msgstr "Автозакупки: информация о товарах и магазинах"

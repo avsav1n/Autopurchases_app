@@ -28,7 +28,9 @@ def send_email(self, subject: str, body: str, to: list[str]) -> None:
     logger.info("Email sent to %s", ", ".join(to))
 
 
-@shared_task(bind=True)
+@shared_task(
+    bind=True,
+)
 def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
     """Задача Celery, выполняющая асинхронную загрузку информации о магазине в базу данных.
 
@@ -37,22 +39,28 @@ def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
         магазина)
     """
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
+    try:
+        with transaction.atomic():
+            user: User = UserModel.objects.get(pk=user_id)
+            shop_info: str = data["shop"]
+            shop_ser = ShopSerializer(data=shop_info, context={"owner": user})
+            shop_ser.is_valid(raise_exception=True)
+            shop_ser.save()
 
-    with transaction.atomic():
-        user: User = UserModel.objects.get(pk=user_id)
-        shop_info: str = data["shop"]
-        shop_ser = ShopSerializer(data=shop_info, context={"owner": user})
-        shop_ser.is_valid(raise_exception=True)
-        shop_ser.save()
-
-        products_info: list[dict] = data["products"]
-        products_ser = ProductSerializer(
-            data=products_info, many=True, context={"shop": shop_ser.instance}
+            products_info: list[dict] = data["products"]
+            products_ser = ProductSerializer(
+                data=products_info, many=True, context={"shop": shop_ser.instance}
+            )
+            products_ser.is_valid(raise_exception=True)
+            products_ser.save()
+        logger.info("Shop '%s' import finished", shop_info)
+    except Exception as exc:
+        logger.exception(
+            "Exception in celery task '%s' %s. Error: %s",
+            self.name.split(".")[-1],
+            self.request.id,
+            exc,
         )
-        products_ser.is_valid(raise_exception=True)
-        products_ser.save()
-
-    logger.info("Shop '%s' import finished", shop_info)
 
 
 @shared_task(bind=True)

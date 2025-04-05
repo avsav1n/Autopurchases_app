@@ -86,14 +86,15 @@ class ContactSerializer(CustomModelSerializer):
         fields = ["id", "city", "street", "house", "apartment"]
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
-        user: User = self.context["user"]
-        if user.contacts.count() >= settings.MAX_CONTACTS_FOR_USER:
-            error_msg = format_lazy(
-                _("A user can not have more than {quantity} contacts at a time."),
-                quantity=settings.MAX_CONTACTS_FOR_USER,
-            )
-            logger.warning(error_msg)
-            raise ValidationError(error_msg)
+        if "user" in self.context:
+            user: User = self.context["user"]
+            if user.contacts.count() >= settings.MAX_CONTACTS_FOR_USER:
+                error_msg = format_lazy(
+                    _("A user can not have more than {quantity} contacts at a time."),
+                    quantity=settings.MAX_CONTACTS_FOR_USER,
+                )
+                logger.warning(error_msg)
+                raise ValidationError(error_msg)
         return attrs
 
     def create(self, validated_data: dict[str, str]) -> Contact:
@@ -622,7 +623,7 @@ class CartSerializer(CustomModelSerializer):
         read_only_fields = ["total_price", "customer"]
 
     def validate(self, attrs: dict[str, int | Product]) -> dict[str, int | Product]:
-        stock: Stock = attrs["product"]
+        stock: Stock = attrs["product"] if "product" in attrs else self.instance.product
         check_availability(can_buy=stock.can_buy)
         check_quantity(on_stock=stock.quantity, in_order=attrs["quantity"])
         return attrs

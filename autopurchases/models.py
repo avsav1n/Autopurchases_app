@@ -86,7 +86,7 @@ class User(AbstractUser):
         verbose_name = _("User")
         verbose_name_plural = _("Users")
         swappable = "AUTH_USER_MODEL"
-        ordering = ["email"]
+        ordering = ["id"]
 
     def __str__(self):
         return self.email
@@ -185,6 +185,7 @@ class Shop(models.Model):
     class Meta:
         verbose_name = _("Shop")
         verbose_name_plural = _("Shops")
+        ordering = ["id"]
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -378,6 +379,7 @@ class Stock(models.Model):
     class Meta:
         verbose_name = _("Products in stock")
         verbose_name_plural = _("Products in stock")
+        ordering = ["id"]
         constraints = [
             models.UniqueConstraint(fields=["shop", "product"], name="unique-shop-product")
         ]
@@ -446,6 +448,7 @@ class Cart(BaseOrder):
     class Meta:
         verbose_name = _("Products in cart")
         verbose_name_plural = _("Products in cart")
+        ordering = ["id"]
 
 
 class OrderManager(CartManager):
@@ -486,7 +489,7 @@ class Order(BaseOrder):
     class Meta:
         verbose_name = _("Order")
         verbose_name_plural = _("Orders")
-        ordering = ["-created_at"]
+        ordering = ["id"]
 
     def __str__(self):
         return f"{super().__str__()} -> {self.delivery_address}"

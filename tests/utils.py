@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import factory
 from django.contrib.auth import get_user_model
@@ -8,8 +8,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from autopurchases.models import (
+    Cart,
     Category,
     Contact,
+    Order,
     Parameter,
     Product,
     ProductsParameters,
@@ -75,6 +77,7 @@ class _ProductFactory(DjangoModelFactory):
 
     class Meta:
         model = Product
+        skip_postgeneration_save = True
 
 
 class ContactFactory(DjangoModelFactory):
@@ -82,8 +85,8 @@ class ContactFactory(DjangoModelFactory):
 
     city: str = factory.Faker("city")
     street: str = factory.Faker("street_name")
-    house: int = factory.Faker("pyint")
-    apartment: int = factory.Faker("pyint")
+    house: int = factory.Faker("numerify", text=r"%%%")
+    apartment: int = factory.Faker("numerify", text=r"%%")
 
     class Meta:
         model = Contact
@@ -143,6 +146,7 @@ class ShopFactory(DjangoModelFactory):
     class Meta:
         model = Shop
         django_get_or_create = ("name",)
+        skip_postgeneration_save = True
 
     class Params:
         no_managers = factory.Trait(managers=None)
@@ -159,6 +163,31 @@ class StockFactory(DjangoModelFactory):
 
     class Meta:
         model = Stock
+        skip_postgeneration_save = True
+
+
+@mute_signals(post_save)
+class CartFactory(DjangoModelFactory):
+    """Фабрика модели Cart."""
+
+    customer: User = factory.SubFactory(factory=UserFactory)
+    product: Stock = factory.SubFactory(factory=StockFactory)
+    quantity: int = factory.Faker("pyint", min_value=1, max_value=10)
+
+    class Meta:
+        model = Cart
+        skip_postgeneration_save = True
+
+
+@mute_signals(post_save)
+class OrderFactory(CartFactory):
+    """Фабрика модели Order."""
+
+    delivery_address: Contact = factory.SubFactory(factory=ContactFactory)
+
+    class Meta:
+        model = Order
+        skip_postgeneration_save = True
 
 
 class CustomAPIClient(APIClient):
@@ -223,3 +252,14 @@ class CustomAPIClient(APIClient):
         self.orm_user_obj.set_password(self.orm_user_obj.password)
         self.orm_user_obj.save(update_fields=["password"])
         return raw_password
+
+
+FACTORIES: TypeAlias = UserFactory | ShopFactory | ContactFactory | StockFactory
+
+
+def factory_wrapper(size: int | None = None, /, _base_factory: FACTORIES | None = None, **kwargs):
+    if kwargs.pop("as_dict", None) is not None:
+        return _base_factory.stub(**kwargs).__dict__
+    if size is not None:
+        return _base_factory.create_batch(size, **kwargs)
+    return _base_factory.create(**kwargs)

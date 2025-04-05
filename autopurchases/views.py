@@ -34,7 +34,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework_yaml.parsers import YAMLParser
 from rest_framework_yaml.renderers import YAMLRenderer
 
-from autopurchases.exceptions import BadRequest
+from autopurchases.exceptions import BadRequest, Conflict
 from autopurchases.filters import OrderFilter, StockFilter
 from autopurchases.models import (
     Cart,
@@ -272,9 +272,9 @@ class ShopViewSet(ModelViewSet):
                     raise BadRequest(error_msg)
                 match file.content_type:
                     case "application/yaml":
-                        data = yaml.safe_load(file.read().decode())
+                        data = yaml.safe_load(file)
                     case "application/json":
-                        data = json.load(file.read().decode())
+                        data = json.load(file)
                     case _:
                         error_msg = _("Attached file's content type required")
                         logger.warning(error_msg)
@@ -331,14 +331,14 @@ class ShopViewSet(ModelViewSet):
         methods=["PATCH"],
         detail=True,
         url_path="stock/(?P<stock_pk>[^/.]+)",
-        url_name="update-product-on-stock",
+        url_name="update-product-in-stock",
         permission_classes=[IsManagerOrAdmin],
     )
-    def update_product_on_stock(self, request: Request, slug: str, stock_pk: str) -> Response:
+    def update_product_in_stock(self, request: Request, slug: str, stock_pk: str) -> Response:
         shop: Shop = self.get_object()
         stock = Stock.objects.with_dependencies().filter(shop=shop, pk=stock_pk).first()
         if stock is None:
-            error_msg = format_lazy(_("Product on stock pk={pk} not found"), pk=stock_pk)
+            error_msg = format_lazy(_("Product in stock pk={pk} not found"), pk=stock_pk)
             logger.error(error_msg)
             raise BadRequest(error_msg)
         stock_ser = StockSerializer(instance=stock, data=request.data, partial=True)
@@ -403,8 +403,8 @@ class StockView(ListAPIView):
 
     Сортировка:
     Доступна сортировка результатов по следующим полям:
-    - price: По стоимости товара (например, .../?order_by=price (по возрастанию))
-    - quantity: По количеству товара (например, .../?order_by=-quantity (по убыванию))
+    - price: По стоимости товара (например, .../?ordering=price (по возрастанию))
+    - quantity: По количеству товара (например, .../?ordering=-quantity (по убыванию))
     """
 
     serializer_class = StockSerializer
@@ -478,6 +478,10 @@ class CartViewSet(UserFilterMixin, ModelViewSet):
         )
         order_ser.is_valid(raise_exception=True)
         order_ser.save()
+        if not order_ser.data:
+            error_msg = _("Products in the cart are not available for ordering")
+            logger.error(error_msg)
+            raise Conflict(error_msg)
         return Response(order_ser.data, status=status.HTTP_201_CREATED)
 
 

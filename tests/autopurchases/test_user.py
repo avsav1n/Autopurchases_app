@@ -6,7 +6,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from faker import Faker
 from rest_framework.response import Response
-from rest_framework.settings import api_settings
 
 from autopurchases.models import Contact, PasswordResetToken, User
 from autopurchases.serializers import UserSerializer
@@ -41,7 +40,7 @@ class TestGetList:
         difference = 5
         users_quantity = settings.REST_FRAMEWORK["PAGE_SIZE"] + difference
 
-        users: list[User] = user_factory(users_quantity)
+        user_factory(users_quantity)
         url: str = f'{url_factory("user-list")}?page=2'
 
         response: Response = anon_client.get(url)
@@ -135,12 +134,13 @@ class TestPatch:
 
         assert response.status_code == 200
         api_data: dict = response.json()
-        assert api_data["email"] == user_info["email"]
-        assert api_data["first_name"] == user_info["first_name"]
+        user.refresh_from_db(fields=["email", "first_name"])
+        assert api_data["email"] == user_info["email"] == user.email
+        assert api_data["first_name"] == user_info["first_name"] == user.first_name
         assert api_data["phone"] == user.phone
         assert api_data["last_name"] == user.last_name
 
-    def test_success_admin(self, admin_client: CustomAPIClient, user_factory, url_factory):
+    def test_admin_success(self, admin_client: CustomAPIClient, user_factory, url_factory):
         user: User = user_factory()
         user_info: dict = user_factory(as_dict=True)
         user_info.pop("first_name")
@@ -151,8 +151,9 @@ class TestPatch:
 
         assert response.status_code == 200
         api_data: dict = response.json()
-        assert api_data["phone"] == user_info["phone"]
-        assert api_data["last_name"] == user_info["last_name"]
+        user.refresh_from_db(fields=["phone", "last_name"])
+        assert api_data["phone"] == user_info["phone"] == user.phone
+        assert api_data["last_name"] == user_info["last_name"] == user.last_name
         assert api_data["email"] == user.email
         assert api_data["first_name"] == user.first_name
 
@@ -183,7 +184,7 @@ class TestDelete:
 
         assert response.status_code == 204
 
-    def test_success_admin(self, admin_client: CustomAPIClient, user_factory, url_factory):
+    def test_admin_success(self, admin_client: CustomAPIClient, user_factory, url_factory):
         user: User = user_factory()
         url: str = url_factory("user-detail", pk=user.id)
 
@@ -209,9 +210,7 @@ class TestDelete:
 
 
 class TestContacts:
-    def test_create_contact_success(
-        self, user_client: CustomAPIClient, contact_factory, url_factory
-    ):
+    def test_create_success(self, user_client: CustomAPIClient, contact_factory, url_factory):
         contact_info: dict = contact_factory(as_dict=True)
         url: str = url_factory("user-create-contact", pk=user_client.orm_user_obj.id)
 
@@ -224,7 +223,7 @@ class TestContacts:
         contact_info["id"] = api_data["contacts"][0]["id"]
         assert api_data["contacts"][0] == contact_info
 
-    def test_create_contact_admin_success(
+    def test_create_admin_success(
         self, admin_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         user: User = user_factory()
@@ -240,7 +239,7 @@ class TestContacts:
         contact_info["id"] = api_data["contacts"][0]["id"]
         assert api_data["contacts"][0] == contact_info
 
-    def test_create_contact_fail_not_owner(
+    def test_create_fail_not_owner(
         self, user_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         user: User = user_factory()
@@ -251,7 +250,7 @@ class TestContacts:
 
         assert response.status_code == 403
 
-    def test_create_contact_fail_unauthorized(
+    def test_create_fail_unauthorized(
         self, anon_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         user: User = user_factory()
@@ -262,9 +261,7 @@ class TestContacts:
 
         assert response.status_code == 401
 
-    def test_delete_contact_success(
-        self, user_client: CustomAPIClient, contact_factory, url_factory
-    ):
+    def test_delete_success(self, user_client: CustomAPIClient, contact_factory, url_factory):
         contacts_quantity = 2
         user: User = user_client.orm_user_obj
         contacts: list[Contact] = contact_factory(contacts_quantity, user=user)
@@ -279,7 +276,7 @@ class TestContacts:
         with pytest.raises(ObjectDoesNotExist):
             Contact.objects.get(pk=target_contact_id)
 
-    def test_delete_contact_admin_success(
+    def test_delete_admin_success(
         self, admin_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         contacts_quantity = 2
@@ -296,7 +293,7 @@ class TestContacts:
         with pytest.raises(ObjectDoesNotExist):
             Contact.objects.get(pk=target_contact_id)
 
-    def test_delete_contact_fail_unauthorized(
+    def test_delete_fail_unauthorized(
         self, anon_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         contacts_quantity = 2
@@ -310,7 +307,7 @@ class TestContacts:
 
         assert response.status_code == 401
 
-    def test_delete_contact_fail_not_owner(
+    def test_delete_fail_not_owner(
         self, user_client: CustomAPIClient, contact_factory, user_factory, url_factory
     ):
         contacts_quantity = 2
@@ -367,7 +364,7 @@ class TestResetToken:
         assert str(user.rtoken) in msg.body
 
     def test_create_fail_no_data(self, anon_client: CustomAPIClient, user_factory, url_factory):
-        user: User = user_factory()
+        user_factory()
         url: str = url_factory("user-get-rtoken")
 
         response: Response = anon_client.get(url)
