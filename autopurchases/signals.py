@@ -30,7 +30,7 @@ def new_user_registered(sender: User, instance: User, created: bool = False, **k
             "Cincerely,\n"
             "AutopurchasesDjangoApp Team."
         )
-        send_email.delay(subject=subject, body=body, to=[instance.email])
+        send_email.delay_on_commit(subject=subject, body=body, to=[instance.email])
 
 
 @receiver(post_save, sender=PasswordResetToken)

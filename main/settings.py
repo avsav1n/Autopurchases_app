@@ -143,7 +143,19 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 100,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "50/minute",
+        "user": "100/minute",
+    },
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
+
 
 # Default user model
 
@@ -233,15 +245,16 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Development settings
 
-if DEBUG == True:
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_STORE_EAGER_RESULT = True
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Autopurchases application constants
 
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 PASSWORD_RESET_TOKEN_TTL = {"hours": 1}
-MAX_CONTACTS_FOR_USER = 5
+MAX_CONTACTS_FOR_USER = os.getenv("MAX_CONTACTS_FOR_USER", 5)
 
 # Reorder parameters for custom admin site
 

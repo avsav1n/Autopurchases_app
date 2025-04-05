@@ -86,6 +86,7 @@ class User(AbstractUser):
         verbose_name = _("User")
         verbose_name_plural = _("Users")
         swappable = "AUTH_USER_MODEL"
+        ordering = ["email"]
 
     def __str__(self):
         return self.email

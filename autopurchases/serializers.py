@@ -86,7 +86,7 @@ class ContactSerializer(CustomModelSerializer):
         fields = ["id", "city", "street", "house", "apartment"]
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
-        user: User = self.context["request"].user
+        user: User = self.context["user"]
         if user.contacts.count() >= settings.MAX_CONTACTS_FOR_USER:
             error_msg = format_lazy(
                 _("A user can not have more than {quantity} contacts at a time."),
@@ -97,8 +97,7 @@ class ContactSerializer(CustomModelSerializer):
         return attrs
 
     def create(self, validated_data: dict[str, str]) -> Contact:
-        user: User = self.context["request"].user
-        contact = Contact.objects.create(user=user, **validated_data)
+        contact = Contact.objects.create(user=self.context["user"], **validated_data)
         return contact
 
 

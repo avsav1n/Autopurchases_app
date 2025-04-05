@@ -49,7 +49,7 @@ from autopurchases.permissions import (
     IsCartOwnerOrAdmin,
     IsManagerOrAdmin,
     IsManagerOrAdminOrReadOnly,
-    IsMeOrAdmin,
+    IsMeOrAdminOrReadOnly,
 )
 from autopurchases.serializers import (
     CartSerializer,
@@ -86,9 +86,9 @@ class UserViewSet(ModelViewSet):
     Для работы требуется аутентификация пользователя.
 
     Поддерживаемые HTTP-методы:
-    - GET-list: Получение информации о всех зарегистрированных пользователях.
-    - GET-detail: Получение информации о конкретном пользователе.
-    - POST: Регистрация нового пользователя. Для этого необходимо передать email (str) и
+    - GET /: Получение информации о всех зарегистрированных пользователях.
+    - GET /<int:user.id>/: Получение информации о конкретном пользователе.
+    - POST /: Регистрация нового пользователя. Для этого необходимо передать email (str) и
         пароль (str).
         Пример тела запроса (в формате JSON):
             {
@@ -98,8 +98,8 @@ class UserViewSet(ModelViewSet):
                 "first_name": str,  # опционально
                 "last_name": str    # опционально
             }
-    - PATCH: Изменение профиля пользователя.
-    - DELETE: Удаление профиля пользователя.
+    - PATCH /<int:user.id>/: Изменение профиля пользователя.
+    - DELETE /<int:user.id>/: Удаление профиля пользователя.
     - POST /<int:user.id>/contacts/: Создание и добавление информации о контакте пользователя
         (адреса). Для этого необходимо передать название города (str), улицы (str),
         номер дома (int).
@@ -112,12 +112,8 @@ class UserViewSet(ModelViewSet):
             }
     - DELETE /<int:user.id>/contacts/<int:contact.id>/: Удаление выбранного контакта пользователя
         (адреса).
-    - GET /reset/: Создание и получение токена сброса пароля. Для этого необходимо передать
-        email (str) зарегистрированного пользователя.
-        Пример тела запроса (в формате JSON):
-            {
-                "email": str
-            }
+    - GET /reset/?email=<str:email>: Создание и получение токена сброса пароля. Для этого в query
+        string необходимо передать email (str) зарегистрированного пользователя.
     - PATCH /reset/confirm/: Сброс старого пароля пользователя. Для этого необходимо передать
         токен сброса пароля (str) и новый пароль (str).
         Пример тела запроса (в формате JSON):
@@ -129,12 +125,12 @@ class UserViewSet(ModelViewSet):
 
     serializer_class = UserSerializer
     queryset = User.objects.prefetch_related("contacts").all()
-    permission_classes = [IsMeOrAdmin]
+    permission_classes = [IsMeOrAdminOrReadOnly]
 
     @action(methods=["POST"], detail=True, url_path="contacts", url_name="create-contact")
     def create_contact(self, request: Request, pk: str) -> Response:
         user: User = self.get_object()
-        contact_ser = ContactSerializer(data=request.data, context={"request": self.request})
+        contact_ser = ContactSerializer(data=request.data, context={"user": user})
         contact_ser.is_valid(raise_exception=True)
         contact_ser.save()
 
@@ -163,13 +159,11 @@ class UserViewSet(ModelViewSet):
             raise BadRequest(error_msg)
         contact.delete()
 
-        user.refresh_from_db(fields=["contacts"])
-        user_ser = UserSerializer(user)
-        return Response(user_ser.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(methods=["GET"], detail=False, url_path="reset", url_name="reset-password")
+    @action(methods=["GET"], detail=False, url_path="reset", url_name="get-rtoken")
     def get_password_reset_token(self, request: Request) -> Response:
-        email_ser = EmailSerializer(data=request.data)
+        email_ser = EmailSerializer(data=request.query_params)
         email_ser.is_valid(raise_exception=True)
         try:
             user: User | None = UserModel.objects.get(email=email_ser.validated_data["email"])
@@ -179,7 +173,7 @@ class UserViewSet(ModelViewSet):
             )
             logger.error(error_msg)
             raise NotFound(error_msg)
-        PasswordResetToken.objects.update_or_create(user=user, defaults={"token": uuid.uuid4()})
+        PasswordResetToken.objects.update_or_create(user=user, defaults={"rtoken": uuid.uuid4()})
         return Response(
             {"message": f"Password reset token sent to {email_ser.validated_data["email"]}"},
             status=status.HTTP_200_OK,
@@ -189,7 +183,7 @@ class UserViewSet(ModelViewSet):
         methods=["PATCH"],
         detail=False,
         url_path="reset/confirm",
-        url_name="reset-password-confirm",
+        url_name="reset-password",
     )
     def update_password(self, request: Request) -> Response:
         rtoken_ser = PasswordResetSerializer(data=request.data)
@@ -382,7 +376,7 @@ class StockView(ListAPIView):
     """View-class для просмотра товаров.
 
     Поддерживаемые HTTP-методы:
-    - GET-list: Получение информации о магазинах, товарах,
+    - GET /: Получение информации о магазинах, товарах,
         их характеристиках, количестве и стоимости.
 
     Фильтрация:
@@ -425,7 +419,7 @@ class EmailObtainAuthToken(ObtainAuthToken):
     """View-class для получения токена аутентификации по email и паролю.
 
     Поддерживаемые HTTP-методы:
-    - POST: Создание и получение токена. Для этого необходимо передать email
+    - POST /: Создание и получение токена. Для этого необходимо передать email
         зарегистрированного пользователя (str) и пароль (str).
         Пример тела запроса (в формате JSON):
             {
@@ -443,18 +437,18 @@ class CartViewSet(UserFilterMixin, ModelViewSet):
     Для работы требуется аутентификация пользователя.
 
     Поддерживаемые HTTP-методы:
-    - GET-list: Получение информации о товарах в корзине.
-    - GET-detail: Получение информации о конкретном товаре в корзине.
-    - POST: Добавление товара в корзину. Для этого необходимо передать информацию о
+    - GET /: Получение информации о товарах в корзине.
+    - GET /<int:cart.id>/: Получение информации о конкретном товаре в корзине.
+    - POST /: Добавление товара в корзину. Для этого необходимо передать информацию о
         добавляемом продукте (stock.id) и количестве (int).
         Пример тела запроса (в формате JSON):
             {
                 "product": stock.id,
                 "quantity": int
             }
-    - PATCH: Изменение информации о товаре в корзине.
+    - PATCH /<int:cart.id>/: Изменение информации о товаре в корзине.
         Изменению доступны поля "product" и "quantity".
-    - DELETE: Удаление товара из корзины.
+    - DELETE /<int:cart.id>/: Удаление товара из корзины.
     - POST /confirm-order/: Подтверждение заказа всех имеющихся товаров в корзине. Для этого
         необходимо передать информацию об адресе доставки.
         Пример тела запроса (в формате JSON):
@@ -493,7 +487,7 @@ class OrderView(UserFilterMixin, ListAPIView):
     Для работы требуется аутентификация пользователя.
 
     Поддерживаемые HTTP-методы:
-    - GET-list: Получение информации об активных/завершенных заказах.
+    - GET /: Получение информации об активных/завершенных заказах.
 
     Фильтрация:
     Доступна фильтрация результатов по следующим полям:
@@ -514,7 +508,7 @@ class CeleryTaskView(APIView):
     """View-class для отслеживания статуса выполения асинхронных задач Celery.
 
     Поддерживаемые HTTP-методы:
-    - GET-detail: Получение информации о статусе задачи по указанному task_id.
+    - GET /<str:task.id>/: Получение информации о статусе задачи по указанному task_id.
     """
 
     def get(self, request: Request, task_id: str) -> Response:
@@ -536,7 +530,7 @@ class DownloadFileView(APIView):
     """View-class для получения выгрузки данных о магазине в виде файла.
 
     Поддерживаемые HTTP-методы:
-    - GET-detail: Получение файла с данными о магазине. Для выбора типа файла (yaml или json)
+    - GET /<str:task.id>/: Получение файла с данными о магазине. Для выбора типа файла (yaml или json)
         необходимо передать заголовок Accept в запросе (по умолчанию yaml).
     """
 

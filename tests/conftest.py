@@ -1,5 +1,4 @@
 import functools
-
 import pytest
 from rest_framework.reverse import reverse
 
@@ -12,24 +11,37 @@ from tests.utils import (
 )
 
 
-@pytest.fixture(scope="session")
-def sync_celery(settings):
+@pytest.fixture(scope="function")
+def sync_celery_worker(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_STORE_EAGER_RESULT = True
 
 
-def email_backend(settings):
+@pytest.fixture(scope="function")
+def locmem_email_backend(settings, transactional_db):
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 
 @pytest.fixture(scope="session")
 def user_factory():
-    def factory(size: int = None, /, **kwargs):
-        if kwargs.pop("raw", None) is not None:
+    def factory(size: int | None = None, /, **kwargs):
+        if kwargs.pop("as_dict", None) is not None:
             return UserFactory.stub(**kwargs).__dict__
-        if size:
+        if size is not None:
             return UserFactory.create_batch(size, **kwargs)
         return UserFactory.create(**kwargs)
+
+    return factory
+
+
+@pytest.fixture(scope="session")
+def contact_factory():
+    def factory(size: int | None = None, /, **kwargs):
+        if kwargs.pop("as_dict", None) is not None:
+            return ContactFactory.stub(**kwargs).__dict__
+        if size is not None:
+            return ContactFactory.create_batch(size, **kwargs)
+        return ContactFactory.create(**kwargs)
 
     return factory
 
@@ -50,7 +62,7 @@ def url_factory(request):
     """
     app_name = request.path.parent.name
 
-    @functools.lru_cache
+    @functools.lru_cache(maxsize=32)
     def factory(url_name: str = "", /, app_name=app_name, **kwargs):
         full_url_name = f"{app_name}:{url_name}"
         return reverse(full_url_name, kwargs=kwargs)
