@@ -128,7 +128,7 @@ def order_updated(
     Действия:
     - асинхронная отправка уведомления о смене статуса заказа на email заказчика.
     """
-    if not created and "status" in update_fields:
+    if not created and update_fields is not None and "status" in update_fields:
         subject = "Order status changed."
         order: Order = Order.objects.with_dependencies().get(pk=instance.id)
         apartment: int | None = order.delivery_address.apartment

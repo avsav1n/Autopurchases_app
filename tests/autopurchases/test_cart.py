@@ -1,20 +1,11 @@
-import json
-
 import pytest
-import yaml
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.mail import EmailMessage
 from django.db.models import QuerySet
-from django_celery_results.models import TaskResult
-from faker import Faker
 from rest_framework.response import Response
 
-from autopurchases.models import STATUS_CHOICES, Cart, Order, Product, Shop, Stock, User
+from autopurchases.models import Cart, Order, Stock, User
 from autopurchases.serializers import (
     CartSerializer,
     OrderSerializer,
-    ShopSerializer,
-    StockSerializer,
 )
 from tests.utils import CustomAPIClient
 

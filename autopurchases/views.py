@@ -23,6 +23,7 @@ from rest_framework.exceptions import (
     UnsupportedMediaType,
 )
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.renderers import JSONRenderer
@@ -296,13 +297,16 @@ class ShopViewSet(ModelViewSet):
         url_path="orders",
         url_name="get-orders",
         permission_classes=[IsManagerOrAdmin],
+        pagination_class=PageNumberPagination,
     )
     def get_shop_orders(self, request: Request, slug: str) -> Response:
         shop: Shop = self.get_object()
         orders: QuerySet[Order] = Order.objects.with_dependencies().filter(product__shop=shop).all()
         filter = OrderFilter(data=request.query_params, queryset=orders)
-        order_ser = OrderSerializer(filter.qs, many=True)
-        return Response(order_ser.data, status=status.HTTP_200_OK)
+        paginator = PageNumberPagination()
+        page = paginator.paginate_queryset(queryset=filter.qs, request=request)
+        order_ser = OrderSerializer(page, many=True)
+        return paginator.get_paginated_response(order_ser.data)
 
     @action(
         methods=["PATCH"],
@@ -534,8 +538,8 @@ class DownloadFileView(APIView):
     """View-class для получения выгрузки данных о магазине в виде файла.
 
     Поддерживаемые HTTP-методы:
-    - GET /<str:task.id>/: Получение файла с данными о магазине. Для выбора типа файла (yaml или json)
-        необходимо передать заголовок Accept в запросе (по умолчанию yaml).
+    - GET /<str:task.id>/: Получение файла с данными о магазине. Для выбора типа файла (yaml или
+        json) необходимо передать заголовок Accept в запросе (по умолчанию yaml).
     """
 
     renderer_classes = [YAMLRenderer, JSONRenderer]

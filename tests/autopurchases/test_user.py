@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from autopurchases.models import Contact, PasswordResetToken, User
 from autopurchases.serializers import UserSerializer
-from tests.utils import CustomAPIClient
+from tests.utils import CustomAPIClient, sorted_list_of_dict_by_id
 
 pytestmark = pytest.mark.django_db
 
@@ -17,29 +17,21 @@ pytestmark = pytest.mark.django_db
 class TestGetList:
     def test_success(self, anon_client: CustomAPIClient, user_factory, url_factory):
         users_quantity = 5
-
         users: list[User] = user_factory(users_quantity)
         url: str = url_factory("user-list")
 
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = response.json()
-        assert "count" in api_data
-        assert "next" in api_data
-        assert "previous" in api_data
-        assert "results" in api_data
-        assert api_data["count"] == users_quantity
-        db_data: list[dict] = UserSerializer(users, many=True).data
-        for user_info in api_data["results"]:
-            assert user_info in db_data
+        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dict_by_id(UserSerializer(users, many=True).data)
+        assert api_data == db_data
 
     def test_second_page_success(
         self, anon_client: CustomAPIClient, user_factory, url_factory, settings
     ):
         difference = 5
         users_quantity = settings.REST_FRAMEWORK["PAGE_SIZE"] + difference
-
         user_factory(users_quantity)
         url: str = f'{url_factory("user-list")}?page=2'
 
