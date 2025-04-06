@@ -149,7 +149,7 @@ class TestGetList:
         stock_quantity = 3
         products: list[Stock] = stock_factory(stock_quantity)
         target_product: Stock = products[0]
-        url: str = f'{url_factory("stock")}?search={target_product.product.model[1:-1]}'
+        url: str = f'{url_factory("stock")}?search={target_product.product.model}'
 
         response: Response = anon_client.get(url)
 
@@ -164,7 +164,7 @@ class TestGetList:
         stock_quantity = 3
         products: list[Stock] = stock_factory(stock_quantity)
         target_product: Stock = products[0]
-        url: str = f'{url_factory("stock")}?search={target_product.product.name[1:-1]}'
+        url: str = f'{url_factory("stock")}?search={target_product.product.name}'
 
         response: Response = anon_client.get(url)
 
@@ -179,13 +179,13 @@ class TestGetList:
         stock_quantity = 3
         products: list[Stock] = stock_factory(stock_quantity)
         target_product: Stock = products[0]
-        url: str = f'{url_factory("stock")}?category={target_product.product.category.name[1:-1]}'
+        url: str = f'{url_factory("stock")}?category={target_product.product.category.name}'
 
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
         api_data: list[dict] = response.json()["results"]
-        db_data: list[dict] = StockSerializer(target_product).data
+        db_data: dict = StockSerializer(target_product).data
         assert api_data == [db_data]
 
     def test_searching_by_shop_success(
@@ -194,11 +194,11 @@ class TestGetList:
         stock_quantity = 3
         products: list[Stock] = stock_factory(stock_quantity)
         target_product: Stock = products[0]
-        url: str = f'{url_factory("stock")}?shop={target_product.shop.name[1:-1]}'
+        url: str = f'{url_factory("stock")}?shop={target_product.shop.name}'
 
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
         api_data: list[dict] = response.json()["results"]
-        db_data: list[dict] = StockSerializer(target_product).data
+        db_data: dict = StockSerializer(target_product).data
         assert api_data == [db_data]
