@@ -307,6 +307,10 @@ class StockAdmin(admin.ModelAdmin):
         qs = qs.select_related("shop", "product__category")
         return qs
 
+    def save_model(self, request, obj, form, change):
+        print()
+        return super().save_model(request, obj, form, change)
+
 
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
@@ -398,3 +402,6 @@ class OrderAdmin(admin.ModelAdmin):
             "customer", "delivery_address", "product__product__category", "product__shop"
         )
         return qs
+
+    def save_model(self, request: HttpRequest, obj: Order, form, change: bool):
+        obj.save(update_fields=form.changed_data) if change else obj.save()

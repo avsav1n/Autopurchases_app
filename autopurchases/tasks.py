@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db import transaction
@@ -20,6 +21,14 @@ def send_email(self, subject: str, body: str, to: list[str]) -> None:
     :param str body: содержание
     :param list[str] to: список email получателей
     """
+    if settings.EMAIL_BACKEND.endswith(".smtp.EmailBackend"):
+        required = ("EMAIL_HOST", "EMAIL_HOST_USER", "EMAIL_HOST_PASSWORD")
+        missing = [param for param in required if not getattr(settings, param)]
+        if missing:
+            error_msg = f"SMTP not configured, missing {", ".join(missing)}"
+            logger.critical(error_msg)
+            return
+
     logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
 
     email = EmailMessage(subject=subject, body=body, to=to)
@@ -28,9 +37,7 @@ def send_email(self, subject: str, body: str, to: list[str]) -> None:
     logger.info("Email sent to %s", ", ".join(to))
 
 
-@shared_task(
-    bind=True,
-)
+@shared_task(bind=True)
 def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
     """Задача Celery, выполняющая асинхронную загрузку информации о магазине в базу данных.
 
