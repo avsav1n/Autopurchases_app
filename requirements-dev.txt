@@ -2,4 +2,6 @@
 
 flake8
 pytest-django
+pytest-cov
 factory_boy
+coveralls

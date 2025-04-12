@@ -334,12 +334,7 @@ class TestImport:
 
 class TestExport:
     def test_yaml_success(
-        self,
-        user_client: CustomAPIClient,
-        shop_factory,
-        stock_factory,
-        url_factory,
-        sync_celery_worker,
+        self, user_client: CustomAPIClient, shop_factory, stock_factory, url_factory
     ):
         shop: Shop = shop_factory(managers__manager=user_client.orm_user_obj)
         stock: list[Stock] = stock_factory(2, shop=shop)
@@ -369,12 +364,7 @@ class TestExport:
         assert api_data["products"] == products_db_data
 
     def test_json_success(
-        self,
-        user_client: CustomAPIClient,
-        shop_factory,
-        stock_factory,
-        url_factory,
-        sync_celery_worker,
+        self, user_client: CustomAPIClient, shop_factory, stock_factory, url_factory
     ):
         shop: Shop = shop_factory(managers__manager=user_client.orm_user_obj)
         stock: list[Stock] = stock_factory(2, shop=shop)
@@ -403,9 +393,7 @@ class TestExport:
         assert api_data["shop"] == shop.name
         assert api_data["products"] == products_db_data
 
-    def test_admin_success(
-        self, admin_client: CustomAPIClient, shop_factory, url_factory, sync_celery_worker
-    ):
+    def test_admin_success(self, admin_client: CustomAPIClient, shop_factory, url_factory):
         shop: Shop = shop_factory()
         url: str = url_factory("shop-export", slug=shop.slug)
 
@@ -588,7 +576,7 @@ class TestPatchOrderStatus:
         shop_factory,
         order_factory,
         url_factory,
-        sync_celery_worker,
+        transactional_db,
         mailoutbox,
     ):
         shop: Shop = shop_factory(managers__manager=user_client.orm_user_obj)
@@ -613,7 +601,7 @@ class TestPatchOrderStatus:
         shop_factory,
         order_factory,
         url_factory,
-        sync_celery_worker,
+        transactional_db,
         mailoutbox,
     ):
         shop: Shop = shop_factory()

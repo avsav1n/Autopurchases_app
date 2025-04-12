@@ -70,7 +70,7 @@ class TestPost:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        sync_celery_worker,
+        transactional_db,
         mailoutbox,
     ):
         user_info: dict = user_factory(as_dict=True)
@@ -319,7 +319,7 @@ class TestResetToken:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        sync_celery_worker,
+        transactional_db,
         mailoutbox,
     ):
         user: User = user_factory()
@@ -338,7 +338,7 @@ class TestResetToken:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        sync_celery_worker,
+        transactional_db,
         mailoutbox,
     ):
         user: User = user_factory()

@@ -1,6 +1,8 @@
 import functools
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
+from pytest_django.lazy_django import skip_if_no_django
 from rest_framework.reverse import reverse
 
 from tests.utils import (
@@ -15,10 +17,16 @@ from tests.utils import (
 )
 
 
-@pytest.fixture(scope="function")
-def sync_celery_worker(settings, transactional_db):
+@pytest.fixture(scope="session", autouse=True)
+def testing_environment():
+    skip_if_no_django()
+
+    settings = SettingsWrapper()
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_STORE_EAGER_RESULT = True
+    settings.REST_FRAMEWORK["PAGE_SIZE"] = 5
+    yield
+    settings.finalize()
 
 
 @pytest.fixture(scope="session")

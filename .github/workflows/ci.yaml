@@ -1,0 +1,54 @@
+name: ci
+
+on: 
+  push: 
+    branches: [ 'main' ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-22.04
+    env: 
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD:  ${{ env.POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+        options:
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check changes
+        uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Linting
+        run: flake8 --max-line-length=100 autopurchases/ --exclude autopurchases/migrations
+
+      - name: Testing
+        run: pytest --cov=.
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD:  ${{ env.POSTGRES_PASSWORD }}
+
+      - name: Upload testing results to Coveralls
+        run: coveralls --service=github
+        env:
+          COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
+        if: success()
