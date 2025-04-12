@@ -150,11 +150,9 @@ class UserViewSet(ModelViewSet):
         contact: Contact | None = Contact.objects.filter(user=user, pk=contact_pk).first()
         if contact is None:
             error_msg = format_lazy(
-                _(
-                    "Contact pk={pk} not found or does not belong to the user '{email}'",
-                    pk=contact_pk,
-                    email=user.email,
-                )
+                _("Contact pk={pk} not found or does not belong to the user '{email}'"),
+                pk=contact_pk,
+                email=user.email,
             )
             logger.error(error_msg)
             raise BadRequest(error_msg)

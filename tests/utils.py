@@ -266,4 +266,4 @@ def factory_wrapper(size: int | None = None, /, _base_factory: FACTORIES | None 
     return _base_factory.create(**kwargs)
 
 
-sorted_list_of_dict_by_id = functools.partial(sorted, key=lambda x: x["id"])
+sorted_list_of_dicts_by_id = functools.partial(sorted, key=lambda x: x["id"])

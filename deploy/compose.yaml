@@ -1,0 +1,70 @@
+volumes:
+  static:
+  socket:
+  pgdata:
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    volumes:
+      - static:/static
+      - socket:/socket
+      - ./conf.d:/etc/nginx/conf.d
+    ports: 
+      - 8000:8000
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --raw incr ping"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+  celery:
+    build: ..
+    container_name: celery
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    entrypoint: [ "celery", "-A", "main.celery", "worker", "--loglevel=INFO" ]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+  django:
+    build: .. 
+    container_name: django
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    expose:
+      - 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nginx:
+        condition: service_started
+      celery:
+        condition: service_started
+    volumes:
+      - static:/app/static
+      - socket:/app/socket

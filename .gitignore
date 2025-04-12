@@ -12,6 +12,9 @@ env/
 venv/
 .venv/
 .pytest_cache/
+.coverage
+.env
+requests.http
 
 ### OS specific ###
 .DS_Store

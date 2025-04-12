@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from autopurchases.models import Stock
 from autopurchases.serializers import StockSerializer
-from tests.utils import CustomAPIClient, sorted_list_of_dict_by_id
+from tests.utils import CustomAPIClient, sorted_list_of_dicts_by_id
 
 pytestmark = pytest.mark.django_db
 
@@ -18,8 +18,8 @@ class TestGetList:
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(StockSerializer(products, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(StockSerializer(products, many=True).data)
         assert api_data == db_data
 
     def test_filter_by_price_success(
@@ -33,8 +33,8 @@ class TestGetList:
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(StockSerializer(products, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(StockSerializer(products, many=True).data)
         assert api_data == db_data
 
     def test_filter_by_quantity_success(
@@ -51,8 +51,8 @@ class TestGetList:
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(StockSerializer(products, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(StockSerializer(products, many=True).data)
         assert api_data == db_data
 
     def test_filter_by_model_success(

@@ -14,9 +14,6 @@ import os
 from pathlib import Path
 
 from django.utils.translation import gettext_lazy as _
-from dotenv import load_dotenv
-
-load_dotenv(dotenv_path="./deploy/.env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,10 +85,10 @@ WSGI_APPLICATION = "main.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", 5432),
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": os.getenv("POSTGRES_PORT", 5432),
+        "NAME": os.getenv("POSTGRES_DB", "djangoautopurchases"),
+        "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
     }
 }
@@ -236,12 +233,12 @@ LOGGING = {
 
 
 # Celery
-
-CELERY_BROKER_URL = "redis://localhost:6379/0"
+BROKER_HOST = os.getenv("BROKER_HOST", "localhost")
+BROKER_PORT = os.getenv("BROKER_PORT", "6379")
+CELERY_BROKER_URL = f"redis://{BROKER_HOST}:{BROKER_PORT}/0"
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_STORE_EAGER_RESULT = True
+
 
 # Smtp server settings
 

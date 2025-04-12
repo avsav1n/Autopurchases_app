@@ -16,27 +16,9 @@ from tests.utils import (
 
 
 @pytest.fixture(scope="function")
-def sync_celery_worker(settings):
+def sync_celery_worker(settings, transactional_db):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_STORE_EAGER_RESULT = True
-
-
-@pytest.fixture(scope="function")
-def locmem_email_backend(settings, transactional_db):
-    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-
-
-# @pytest.fixture(scope="session")
-# def user_factory():
-#     def factory(size: int | None = None, /, **kwargs):
-#         if kwargs.pop("as_dict", None) is not None:
-#             return UserFactory.stub(**kwargs).__dict__
-#         if size is not None:
-#             return UserFactory.create_batch(size, **kwargs)
-#         return UserFactory.create(**kwargs)
-
-
-#     return factory
 
 
 @pytest.fixture(scope="session")

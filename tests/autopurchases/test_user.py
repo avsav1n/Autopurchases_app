@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from autopurchases.models import Contact, PasswordResetToken, User
 from autopurchases.serializers import UserSerializer
-from tests.utils import CustomAPIClient, sorted_list_of_dict_by_id
+from tests.utils import CustomAPIClient, sorted_list_of_dicts_by_id
 
 pytestmark = pytest.mark.django_db
 
@@ -23,8 +23,8 @@ class TestGetList:
         response: Response = anon_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(UserSerializer(users, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(UserSerializer(users, many=True).data)
         assert api_data == db_data
 
     def test_second_page_success(
@@ -70,7 +70,6 @@ class TestPost:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        locmem_email_backend,
         sync_celery_worker,
         mailoutbox,
     ):
@@ -320,7 +319,6 @@ class TestResetToken:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        locmem_email_backend,
         sync_celery_worker,
         mailoutbox,
     ):
@@ -340,7 +338,6 @@ class TestResetToken:
         anon_client: CustomAPIClient,
         user_factory,
         url_factory,
-        locmem_email_backend,
         sync_celery_worker,
         mailoutbox,
     ):

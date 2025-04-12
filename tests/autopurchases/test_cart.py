@@ -7,7 +7,7 @@ from autopurchases.serializers import (
     CartSerializer,
     OrderSerializer,
 )
-from tests.utils import CustomAPIClient
+from tests.utils import CustomAPIClient, sorted_list_of_dicts_by_id
 
 pytestmark = pytest.mark.django_db
 
@@ -22,8 +22,8 @@ class TestGetList:
         response: Response = user_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted(response.json()["results"], key=lambda x: x["id"])
-        db_data: list[dict] = sorted(CartSerializer(cart, many=True).data, key=lambda x: x["id"])
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(CartSerializer(cart, many=True).data)
         assert api_data == db_data
 
     def test_fail_unauthorized(self, anon_client: CustomAPIClient, url_factory):
@@ -178,13 +178,13 @@ class TestConfirmOrder:
         response: Response = user_client.post(url, data=order_info)
 
         assert response.status_code == 201
-        api_data: list[dict] = sorted(response.json(), key=lambda x: x["id"])
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json())
         assert len(api_data) == cart_quantity
         for order in api_data:
             assert order["delivery_address"] == order_info["delivery_address"]
             assert order["customer"] == user.email
         orders: QuerySet[Order] = Order.objects.filter(customer=user)
-        db_data: list[dict] = sorted(OrderSerializer(orders, many=True).data, key=lambda x: x["id"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(OrderSerializer(orders, many=True).data)
         assert api_data == db_data
 
     def test_fail_empty_cart(
@@ -212,13 +212,13 @@ class TestConfirmOrder:
         response: Response = user_client.post(url, data=order_info)
 
         assert response.status_code == 201
-        api_data: list[dict] = sorted(response.json(), key=lambda x: x["id"])
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json())
         assert len(api_data) == cart_quantity
         for order in api_data:
             assert order["delivery_address"] == order_info["delivery_address"]
             assert order["customer"] == user.email
         orders: QuerySet[Order] = Order.objects.filter(customer=user)
-        db_data: list[dict] = sorted(OrderSerializer(orders, many=True).data, key=lambda x: x["id"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(OrderSerializer(orders, many=True).data)
         assert api_data == db_data
         cart: QuerySet[Cart] = Cart.objects.filter(customer=user)
         assert list(cart) == unavailable_products

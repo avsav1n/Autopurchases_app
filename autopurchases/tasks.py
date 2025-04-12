@@ -5,6 +5,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db import transaction
+from django.utils.text import format_lazy
+from django.utils.translation import gettext_lazy as _
 
 from autopurchases.models import Shop, Stock, User
 from autopurchases.serializers import ProductSerializer, ShopSerializer, StockSerializer
@@ -25,16 +27,22 @@ def send_email(self, subject: str, body: str, to: list[str]) -> None:
         required = ("EMAIL_HOST", "EMAIL_HOST_USER", "EMAIL_HOST_PASSWORD")
         missing = [param for param in required if not getattr(settings, param)]
         if missing:
-            error_msg = f"SMTP not configured, missing {", ".join(missing)}"
+            error_msg = format_lazy(
+                _("SMTP not configured, missing {params}"), params=", ".join(missing)
+            )
             logger.critical(error_msg)
             return
 
-    logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
+    msg = format_lazy(
+        _("Celery task '{name}' {id} started"), name=self.name.split(".")[-1], id=self.request.id
+    )
+    logger.info(msg)
 
     email = EmailMessage(subject=subject, body=body, to=to)
     email.send()
 
-    logger.info("Email sent to %s", ", ".join(to))
+    msg = format_lazy(_("Email sent to {to}"), to=", ".join(to))
+    logger.info(msg)
 
 
 @shared_task(bind=True)
@@ -45,7 +53,11 @@ def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
     :param int user_id: идентификатор пользователя (данный пользователь будет помечен как владелец
         магазина)
     """
-    logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
+    msg = format_lazy(
+        _("Celery task '{name}' {id} started"), name=self.name.split(".")[-1], id=self.request.id
+    )
+    logger.info(msg)
+
     try:
         with transaction.atomic():
             user: User = UserModel.objects.get(pk=user_id)
@@ -60,14 +72,18 @@ def import_shop(self, data: dict[str, str | list[dict]], user_id: int) -> None:
             )
             products_ser.is_valid(raise_exception=True)
             products_ser.save()
-        logger.info("Shop '%s' import finished", shop_info)
+
+        msg = format_lazy(_("Shop '{name}' import finished"), name=shop_info)
+        logger.info(msg)
+
     except Exception as exc:
-        logger.exception(
-            "Exception in celery task '%s' %s. Error: %s",
-            self.name.split(".")[-1],
-            self.request.id,
-            exc,
+        error_msg = format_lazy(
+            _("Exception in celery task '{name}' {id}. Error: {error}"),
+            name=self.name.split(".")[-1],
+            id=self.request.id,
+            error=exc,
         )
+        logger.exception(error_msg)
 
 
 @shared_task(bind=True)
@@ -77,7 +93,10 @@ def export_shop(self, shop_id: int) -> dict[str, str | list[dict]]:
     :param int shop_id: идентификатор магазина
     :return dict[str, str | list[dict]]: информация о магазине
     """
-    logger.info("Celery task '%s' %s started", self.name.split(".")[-1], self.request.id)
+    msg = format_lazy(
+        _("Celery task '{name}' {id} started"), name=self.name.split(".")[-1], id=self.request.id
+    )
+    logger.info(msg)
 
     shop: Shop = Shop.objects.get(pk=shop_id)
     stock: Stock = Stock.objects.with_dependencies().filter(shop_id=shop_id).all()
@@ -88,6 +107,8 @@ def export_shop(self, shop_id: int) -> dict[str, str | list[dict]]:
     ]
 
     result = {"shop": shop.name, "products": stock_data}
-    logger.info("Shop '%s' export finished", shop.name)
+
+    msg = format_lazy(_("Shop '{name}' import finished"), name=shop.name)
+    logger.info(msg)
 
     return result

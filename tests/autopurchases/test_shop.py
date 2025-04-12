@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from autopurchases.models import STATUS_CHOICES, Order, Product, Shop, Stock, User
 from autopurchases.serializers import OrderSerializer, ShopSerializer, StockSerializer
-from tests.utils import CustomAPIClient, sorted_list_of_dict_by_id
+from tests.utils import CustomAPIClient, sorted_list_of_dicts_by_id
 
 pytestmark = pytest.mark.django_db
 
@@ -443,8 +443,8 @@ class TestGetOrders:
         response: Response = user_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(OrderSerializer(orders, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(OrderSerializer(orders, many=True).data)
         assert api_data == db_data
 
     def test_filter_by_status_success(
@@ -461,8 +461,8 @@ class TestGetOrders:
         response: Response = user_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(
             OrderSerializer(assembled_orders, many=True).data
         )
         assert api_data == db_data
@@ -490,8 +490,8 @@ class TestGetOrders:
         response: Response = admin_client.get(url)
 
         assert response.status_code == 200
-        api_data: list[dict] = sorted_list_of_dict_by_id(response.json()["results"])
-        db_data: list[dict] = sorted_list_of_dict_by_id(OrderSerializer(orders, many=True).data)
+        api_data: list[dict] = sorted_list_of_dicts_by_id(response.json()["results"])
+        db_data: list[dict] = sorted_list_of_dicts_by_id(OrderSerializer(orders, many=True).data)
         assert api_data == db_data
 
     def test_fail_unauthorized(self, anon_client: CustomAPIClient, shop_factory, url_factory):
@@ -588,7 +588,6 @@ class TestPatchOrderStatus:
         shop_factory,
         order_factory,
         url_factory,
-        locmem_email_backend,
         sync_celery_worker,
         mailoutbox,
     ):
@@ -614,7 +613,6 @@ class TestPatchOrderStatus:
         shop_factory,
         order_factory,
         url_factory,
-        locmem_email_backend,
         sync_celery_worker,
         mailoutbox,
     ):

@@ -1,0 +1,10 @@
+# Ignore everything
+**
+
+# Allowed
+!autopurchases/
+!main/
+!manage.py
+!Dockerfile
+!docker-entrypoint.sh
+!requirements.txt
