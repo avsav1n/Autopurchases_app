@@ -140,7 +140,7 @@ class PasswordResetToken(models.Model):
         related_name="rtoken",
     )
     rtoken: UUID = models.UUIDField(
-        unique=True, default=uuid.uuid4(), verbose_name=_("Password reset token")
+        unique=True, default=uuid.uuid4, verbose_name=_("Password reset token")
     )
     created_at: datetime = models.DateTimeField(verbose_name=_("Created"), auto_now=True)
 
