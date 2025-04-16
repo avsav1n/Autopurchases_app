@@ -1,13 +1,13 @@
-FROM python:3.12-slim AS builder
-RUN apt-get update &&\
-    apt-get install -y --no-install-recommends gettext 
+FROM python:3.12-alpine AS builder
+RUN apk update &&\
+    apk add --no-cache gettext 
 WORKDIR /app
 COPY . .
 RUN python3 -m venv /app/venv &&\
     /app/venv/bin/pip install --no-cache-dir -r requirements.txt &&\
     /app/venv/bin/django-admin compilemessages
 
-FROM python:3.12-slim
+FROM python:3.12-alpine
 WORKDIR /app
 COPY --from=builder /app /app
 ENV PYTHONUNBUFFERED=1 \
